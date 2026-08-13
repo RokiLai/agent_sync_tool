@@ -1,0 +1,31 @@
+name: Dual implementation
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  compatibility:
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/checkout@v4
+        with:
+          repository: RokiLai/ai-instructions
+          path: source/ai-instructions
+      - name: Run dual implementation contracts
+        env:
+          AI_INSTRUCTIONS_SOURCE_PROJECT: ${{ github.workspace }}/source/ai-instructions
+        run: sh scripts/run-implementation-contracts.sh all
+      - name: Cross compile supported targets
+        run: |
+          GOOS=darwin GOARCH=amd64 go build -o /tmp/aic-darwin-amd64 ./cmd/aic
+          GOOS=darwin GOARCH=arm64 go build -o /tmp/aic-darwin-arm64 ./cmd/aic
+          GOOS=linux GOARCH=amd64 go build -o /tmp/aic-linux-amd64 ./cmd/aic
+          GOOS=linux GOARCH=arm64 go build -o /tmp/aic-linux-arm64 ./cmd/aic

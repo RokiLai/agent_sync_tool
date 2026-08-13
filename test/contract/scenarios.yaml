@@ -1,0 +1,60 @@
+schema: 1
+source_suite: tests/test-ai-instructions.sh
+expected_plan: 1..36
+groups:
+  cli:
+    - {id: 1, name: 语法、版本和帮助, success: true, stdout: stable-help-and-version}
+  install:
+    - {id: 2, name: install dry-run 无副作用, success: true}
+    - {id: 3, name: 首次安装创建 runtime、入口、aic 和 Shell 集成, success: true}
+    - {id: 4, name: 重复安装幂等, success: true}
+    - {id: 18, name: 安装预检冲突时保持零写入, success: false}
+    - {id: 19, name: 安装不覆盖非受管仓库路径配置, success: false}
+    - {id: 20, name: 安装不覆盖非受管 AGENTS.md 来源配置, success: false}
+    - {id: 21, name: 非交互安装要求通过位置参数提供 URL, success: false}
+    - {id: 32, name: 任意目录安装、路径迁移和环境变量覆盖, success: true}
+    - {id: 33, name: 默认目录完成文档所述新电脑接入, success: true}
+  upgrade:
+    - {id: 5, name: upgrade 在线原子升级、识别最新版本并拒绝参数, success: mixed}
+    - {id: 6, name: upgrade 在候选无效或网络失败时保留当前工具, success: false}
+    - {id: 7, name: upgrade 不覆盖非受管安装目标, success: false}
+  diagnose:
+    - {id: 8, name: status、doctor 和 shell-init, success: true}
+  source:
+    - {id: 9, name: source 默认查看来源并保持 show 兼容, success: true}
+    - {id: 10, name: source test 验证当前或候选来源且无副作用, success: mixed}
+    - {id: 11, name: source set 默认回车或输入 n 均取消, success: true}
+    - {id: 12, name: source set 非 TTY 失败且下载失败不进入确认, success: false}
+    - {id: 13, name: source set 确认后原子切换配置和同源 runtime, success: true}
+  sync:
+    - {id: 14, name: Shell wrapper 同步后调用真实 CLI 并传递参数, success: true}
+    - {id: 15, name: sync 保持 stdout 纯净, success: true, stdout: empty, stderr: sync-success}
+    - {id: 16, name: 网络失败时保留 last-known-good 缓存, success: true, stderr: cache-warning}
+    - {id: 17, name: 无缓存时同步失败阻止继续, success: false}
+    - {id: 22, name: sync 自动迁移旧 runtime 布局, success: true}
+    - {id: 23, name: sync 清理陈旧锁, success: true}
+    - {id: 24, name: sync 并发串行化并支持空格路径, success: true}
+    - {id: 25, name: sync 收到 TERM 后清理锁和候选目录, success: false}
+  uninstall:
+    - {id: 26, name: uninstall 默认回车不执行删除, success: true}
+    - {id: 27, name: uninstall 输入 n 不执行删除, success: true}
+    - {id: 28, name: uninstall 执行预览中的受管对象、保留 runtime 和非受管内容, success: true}
+    - {id: 29, name: uninstall 在非 TTY 环境明确失败, success: false}
+    - {id: 30, name: uninstall 二次确认后删除 runtime, success: true}
+    - {id: 31, name: Shell 集成不完整时保持安全保留策略, success: true}
+  bootstrap:
+    - {id: 34, name: bootstrap 从标准输入完成首次安装和安全快进更新, success: true}
+    - {id: 35, name: bootstrap 保留包含本地修改的仓库, success: false}
+    - {id: 36, name: bootstrap 拒绝异常远端并正确传播 clone 失败, success: false}
+stable_contracts:
+  markers:
+    - "# ai-instructions managed file v1"
+    - "# ai-instructions repository path v1"
+    - "# ai-instructions AGENTS URL v1"
+    - "# >>> ai-instructions managed block >>>"
+    - "# <<< ai-instructions managed block <<<"
+  runtime_permissions: "0444"
+  runtime_links:
+    AGENTS.md: current/AGENTS.md
+    REVISION: current/REVISION
+    current: versions/<git-blob-sha1>

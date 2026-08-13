@@ -1,0 +1,37 @@
+task: go-cli-migration
+summary: 在保持源项目 CLI、配置、runtime 和安全语义兼容的前提下，在 agent_sync_tool 中用 Go 重构 aic
+source_project: /Users/rokilai/src/ai-instructions
+target_project: /Users/rokilai/src/agent_sync_tool
+allowed_paths:
+  - changes/go-cli-migration.yaml
+  - go.mod
+  - go.sum
+  - Makefile
+  - cmd/**
+  - internal/**
+  - test/**
+  - scripts/**
+  - ai-instructions
+  - install.sh
+  - bin/ai-instructions
+  - tests/test-ai-instructions.sh
+  - README.md
+  - docs/**
+  - .github/workflows/**
+constraints:
+  - 不修改源项目 /Users/rokilai/src/ai-instructions
+  - 不修改 AGENTS.md 和重构实施方案
+  - 保持现有 CLI、配置 marker、runtime 布局和 Git blob revision 兼容
+  - 不覆盖或删除非受管用户文件
+  - 安装预检失败时保持零写入
+  - 普通同步保留 last-known-good，严格同步失败不得切换状态
+  - 默认只使用 Go 标准库；新增第三方依赖必须单独说明必要性并获得同意
+  - 支持 macOS、Linux 和 WSL，目标架构至少包括 amd64 与 arm64
+verification:
+  - 变更范围检查
+  - 架构依赖检查
+  - Go 单元测试与 race detector
+  - Shell 兼容测试
+  - macOS 与 Linux 集成测试
+  - 全量回归测试
+  - Diff Coverage 检查
