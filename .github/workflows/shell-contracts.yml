@@ -12,6 +12,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Install expect on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y expect
       - uses: actions/checkout@v4
         with:
           repository: RokiLai/ai-instructions
