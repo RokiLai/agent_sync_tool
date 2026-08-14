@@ -64,6 +64,18 @@ func TestBootstrapInstallAndChecksumFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	status := exec.Command(installed, "status")
+	status.Env = env
+	statusOut, err := status.CombinedOutput()
+	if err != nil || !strings.Contains(string(statusOut), "[OK] 安装模式：Release二进制") || strings.Contains(string(statusOut), "[FAIL] 仓库不存在") {
+		t.Fatalf("status=%s err=%v", statusOut, err)
+	}
+	doctor := exec.Command(installed, "doctor")
+	doctor.Env = env
+	doctorOut, err := doctor.CombinedOutput()
+	if err != nil || !strings.Contains(string(doctorOut), "[OK] Release二进制安装") || !strings.Contains(string(doctorOut), "0 个失败") {
+		t.Fatalf("doctor=%s err=%v", doctorOut, err)
+	}
 	if err := os.WriteFile(checks, []byte("deadbeef  "+artifact+"\n"), 0600); err != nil {
 		t.Fatal(err)
 	}

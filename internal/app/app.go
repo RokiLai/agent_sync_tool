@@ -23,7 +23,7 @@ import (
 	"github.com/RokiLai/agent_sync_tool/internal/upgrade"
 )
 
-var Version = "3.0.0"
+var Version = "3.0.1"
 
 type Dependencies struct {
 	Stdin          io.Reader

@@ -31,6 +31,7 @@ func Load(lookup LookupEnv, executable, command string) (Config, error) {
 	if !ok || home == "" {
 		return Config{}, errors.New("HOME 未设置")
 	}
+	defaultRepository := filepath.Join(home, ".local/share/ai-instructions")
 	c := Config{Paths: Paths{
 		HomeDir:    home,
 		RuntimeDir: valueOr(lookup, "AI_INSTRUCTIONS_RUNTIME_DIR", filepath.Join(home, ".local/share/ai-instructions-runtime")),
@@ -51,11 +52,11 @@ func Load(lookup LookupEnv, executable, command string) (Config, error) {
 		} else if repo, ok := DetectRepository(executable); ok {
 			c.RepositoryDir, c.RepositorySource = repo, "script"
 		} else {
-			c.RepositoryDir, c.RepositorySource = filepath.Join(home, ".local/share/ai-instructions"), "default"
+			c.RepositoryDir, c.RepositorySource = defaultRepository, "default"
 		}
 	}
-	if c.RepositorySource == "default" {
-		if info, err := os.Stat(filepath.Join(c.ConfigDir, "bin/ai-instructions")); err == nil && info.Mode().IsRegular() {
+	if (c.RepositorySource == "default" || c.RepositorySource == "saved") && c.RepositoryDir == defaultRepository && !isDir(filepath.Join(c.RepositoryDir, ".git")) {
+		if info, err := os.Stat(filepath.Join(c.ConfigDir, "bin/ai-instructions")); err == nil && info.Mode().IsRegular() && info.Mode()&0111 != 0 {
 			c.RepositorySource = "release"
 		}
 	}

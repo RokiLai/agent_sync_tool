@@ -35,7 +35,7 @@ func TestReleaseBuildNormalizesTagVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(data)
-	for _, expected := range []string{"AIC_BUILD_VERSION:-3.0.0", "[vV]*) version=${version#?}"} {
+	for _, expected := range []string{"AIC_BUILD_VERSION:-3.0.1", "[vV]*) version=${version#?}"} {
 		if !strings.Contains(text, expected) {
 			t.Fatalf("release build is missing %q", expected)
 		}

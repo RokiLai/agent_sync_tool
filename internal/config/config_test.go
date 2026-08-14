@@ -82,6 +82,39 @@ func TestLoadSavedAndDefaultRepository(t *testing.T) {
 	}
 }
 
+func TestLoadDetectsReleaseFromManagedDefaultPath(t *testing.T) {
+	home := t.TempDir()
+	configDir := filepath.Join(home, ".config/ai-instructions")
+	installedDir := filepath.Join(configDir, "bin")
+	defaultRepo := filepath.Join(home, ".local/share/ai-instructions")
+	if err := os.MkdirAll(installedDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(configDir, "repo-path"), []byte(RepoPathMarker+"\n"+defaultRepo+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(installedDir, "ai-instructions"), []byte("binary"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	lookup := func(key string) (string, bool) {
+		if key == "HOME" {
+			return home, true
+		}
+		return "", false
+	}
+	c, err := Load(lookup, filepath.Join(installedDir, "ai-instructions"), "status")
+	if err != nil || c.RepositorySource != "release" || c.RepositoryDir != defaultRepo {
+		t.Fatalf("release config: %#v err=%v", c, err)
+	}
+	if err := os.MkdirAll(filepath.Join(defaultRepo, ".git"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	c, err = Load(lookup, filepath.Join(installedDir, "ai-instructions"), "status")
+	if err != nil || c.RepositorySource != "saved" {
+		t.Fatalf("repository config: %#v err=%v", c, err)
+	}
+}
+
 func TestDetectRepository(t *testing.T) {
 	repo := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(repo, ".git"), 0755); err != nil {
