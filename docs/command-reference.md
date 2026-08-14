@@ -4,7 +4,7 @@
 agentsync <命令> [选项]
 ```
 
-`agentsync` 是主命令。v3.2.x 为迁移保留 `aic` 和 `ai-instructions`，功能相同；后续主版本将移除这两个旧入口。
+`agentsync` 是唯一安装的命令入口。v3.2.1 起重复安装会清理本工具管理的 `aic` 和 `ai-instructions` 旧链接，但不会删除用户自己的同名文件。
 
 ## `install`
 
@@ -123,10 +123,10 @@ agentsync -V
 输出格式：
 
 ```text
-ai-instructions 3.2.0
+ai-instructions 3.2.1
 ```
 
-v3.2.x 暂时保留旧输出前缀，以便 v3.1.2 的升级候选校验能够识别新版本。
+v3.2.1 保留旧输出前缀，以便 v3.1.2 的升级候选校验能够识别新版本。
 
 ## `help`
 

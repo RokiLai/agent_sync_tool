@@ -8,10 +8,13 @@ const (
 	VersionOutputName     = "ai-instructions"
 	PrimaryArtifactPrefix = "agentsync"
 	LegacyArtifactPrefix  = "aic"
-	TransitionSeries      = "v3.2.x"
 )
 
 func CommandNames() []string {
+	return []string{PrimaryCommand}
+}
+
+func HistoricalCommandNames() []string {
 	return []string{PrimaryCommand, LegacyShortCommand, LegacyLongCommand}
 }
 

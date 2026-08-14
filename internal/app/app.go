@@ -25,7 +25,7 @@ import (
 	"github.com/RokiLai/agent_sync_tool/internal/upgrade"
 )
 
-var Version = "3.2.0"
+var Version = "3.2.1"
 
 type Dependencies struct {
 	Stdin            io.Reader
@@ -65,7 +65,7 @@ func Main(ctx context.Context, args []string, deps Dependencies) int {
 		deps.Diagnose = diagnose.DefaultDependencies()
 	}
 	if identity.IsLegacyCommand(deps.ProgramName) {
-		fmt.Fprintf(deps.Stderr, "[WARN] %s 已更名为 %s；当前版本仍保留兼容入口。\n", deps.ProgramName, identity.PrimaryCommand)
+		fmt.Fprintf(deps.Stderr, "[WARN] %s 已更名为 %s；请运行 %s install 迁移旧入口。\n", deps.ProgramName, identity.PrimaryCommand, identity.PrimaryCommand)
 	}
 	command := "help"
 	if len(args) > 0 {
@@ -377,8 +377,6 @@ func upgradeYes(value string) bool {
 }
 
 var Usage = fmt.Sprintf(`用法：%s <命令> [选项]
-兼容命令：%s、%s（仅 %s 过渡期保留）
-
 命令：
   install      安装工具、同步规则、创建 AI 入口并配置 Shell
   sync         从已保存的 HTTP(S) 链接原子部署最新 AGENTS.md
@@ -410,4 +408,4 @@ uninstall：
   AI_INSTRUCTIONS_CONFIG_DIR
   AI_INSTRUCTIONS_BIN_DIR
   CODEX_HOME
-`, identity.PrimaryCommand, identity.LegacyShortCommand, identity.LegacyLongCommand, identity.TransitionSeries)
+`, identity.PrimaryCommand)

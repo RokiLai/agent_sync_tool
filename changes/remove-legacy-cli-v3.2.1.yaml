@@ -1,0 +1,30 @@
+task: remove-legacy-cli-v3.2.1
+summary: v3.2.1 新安装只保留 agentsync 命令入口，同时保持旧版升级资产兼容
+allowed_paths:
+  - changes/remove-legacy-cli-v3.2.1.yaml
+  - internal/app/**
+  - internal/identity/**
+  - internal/install/**
+  - internal/diagnose/**
+  - internal/uninstall/**
+  - test/**
+  - scripts/**
+  - README.md
+  - docs/**
+constraints:
+  - 新安装和诊断只将 agentsync 视为命令入口
+  - 安装时仅删除本工具管理的 aic 和 ai-instructions 旧链接
+  - 卸载仍清理本工具管理的历史入口
+  - Release 仍发布 aic_* 兼容资产，保证 v3.1.2 可升级
+  - 版本输出保持 ai-instructions 前缀，不改变旧候选校验协议
+  - 保留配置目录、runtime、marker、环境变量和内部受管二进制路径
+  - 不修改历史变更清单和重构方案文档
+  - 不引入第三方依赖
+verification:
+  - agentsync 单入口安装、诊断和卸载测试
+  - 旧受管入口迁移与非受管文件保留测试
+  - 新旧 Release 资产与 checksum 测试
+  - Go vet 与全量 race 测试
+  - 四平台构建和 Release 验证
+  - v3.2.0 到 v3.2.1 真实升级验收
+  - agentsync upgrade 真实最新版验收

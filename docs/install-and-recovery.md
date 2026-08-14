@@ -180,7 +180,7 @@ aic install
 agentsync version
 ```
 
-第二步会复用已保存的规则来源并创建 `agentsync`。v3.2.x 仍可使用 `aic` 和 `ai-instructions`，但它们仅用于一个版本系列的迁移；完成后请统一使用 `agentsync`。
+第二步会复用已保存的规则来源、创建 `agentsync`，并清理本工具管理的 `aic` 和 `ai-instructions` 旧链接。v3.2.1 的 Release 仍保留 `aic_*` 资产，仅用于让旧客户端完成这次迁移。
 
 ## 故障恢复
 

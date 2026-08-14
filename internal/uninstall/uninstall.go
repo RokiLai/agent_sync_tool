@@ -24,7 +24,7 @@ func Build(c config.Config, shell string) Plan {
 		collectLink(&p, path, runtimeFile)
 	}
 	installed := filepath.Join(c.ConfigDir, "bin", identity.ManagedBinaryName)
-	for _, name := range identity.CommandNames() {
+	for _, name := range identity.HistoricalCommandNames() {
 		collectLink(&p, filepath.Join(c.BinDir, name), installed)
 	}
 	for path, marker := range map[string]string{filepath.Join(c.ConfigDir, "repo-path"): config.RepoPathMarker, filepath.Join(c.ConfigDir, "agents-url"): config.AgentsURLMarker, filepath.Join(c.ConfigDir, "shell-integration.sh"): config.ManagedMarker} {

@@ -120,6 +120,9 @@ func (i Installer) Prepare(ctx context.Context, o Options) (Plan, error) {
 	for _, name := range identity.CommandNames() {
 		p.Operations = append(p.Operations, Operation{"link", filepath.Join(c.BinDir, name), installed, nil, 0})
 	}
+	for _, name := range []string{identity.LegacyShortCommand, identity.LegacyLongCommand} {
+		p.Operations = append(p.Operations, Operation{"remove-managed-link", filepath.Join(c.BinDir, name), installed, nil, 0})
+	}
 	p.Operations = append(p.Operations, Operation{"file", filepath.Join(c.ConfigDir, "repo-path"), "", []byte(config.RepoPathMarker + "\n" + c.RepositoryDir + "\n"), 0600}, Operation{"file", filepath.Join(c.ConfigDir, "agents-url"), "", []byte(config.AgentsURLMarker + "\n" + o.URL + "\n"), 0600})
 	for _, tool := range o.Tools {
 		path := map[string]string{"codex": filepath.Join(c.CodexHome, "AGENTS.md"), "claude": filepath.Join(c.HomeDir, ".claude/CLAUDE.md"), "agy": filepath.Join(c.HomeDir, ".gemini/GEMINI.md")}[tool]
@@ -144,6 +147,8 @@ func Preflight(p Plan, c config.Config) error {
 			return err
 		}
 		switch op.Kind {
+		case "remove-managed-link":
+			continue
 		case "link":
 			if info.Mode()&os.ModeSymlink == 0 {
 				return fmt.Errorf("路径已存在且不是受管符号链接：%s", op.Path)
@@ -235,6 +240,12 @@ func Execute(p Plan, c config.Config) error {
 			}
 			if err := managedfs.EnsureSymlink(op.Path, op.Target); err != nil {
 				return err
+			}
+		case "remove-managed-link":
+			if target, err := os.Readlink(op.Path); err == nil && target == op.Target {
+				if err := os.Remove(op.Path); err != nil {
+					return err
+				}
 			}
 		}
 	}

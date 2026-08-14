@@ -64,7 +64,7 @@ func TestBinaryVersionAliases(t *testing.T) {
 		cmd := exec.Command(binary, arg)
 		cmd.Env = append(os.Environ(), "HOME="+home)
 		out, err := cmd.Output()
-		if err != nil || string(out) != "ai-instructions 3.2.0\n" {
+		if err != nil || string(out) != "ai-instructions 3.2.1\n" {
 			t.Fatalf("arg=%s out=%q err=%v", arg, out, err)
 		}
 	}

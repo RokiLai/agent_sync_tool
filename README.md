@@ -2,7 +2,7 @@
 
 Agent Sync Tool 是一个用于集中管理 AI 编程助手规则的命令行工具。它从一个 HTTP(S) 地址获取 `AGENTS.md`，以只读、可回滚的版本保存到本机，并为 Codex、Claude 和 Antigravity 创建统一入口。
 
-主命令为 `agentsync`。v3.2.x 同时保留 `aic` 和 `ai-instructions` 兼容入口，后续主版本将移除旧入口。
+主命令为 `agentsync`。v3.2.1 起新安装只创建该命令入口，重复安装会清理本工具管理的 `aic` 和 `ai-instructions` 旧链接。
 
 核心 CLI 完全使用 Go 实现。`install.sh` 只负责首次下载和校验 Release 二进制；生成的 Shell 集成只负责在启动 AI 工具前同步规则，不包含另一套 CLI 实现。
 
@@ -23,7 +23,7 @@ Agent Sync Tool 是一个用于集中管理 AI 编程助手规则的命令行工
 - Linux：arm64、x86_64
 - WSL 2：使用 Linux x86_64 产物
 
-正式 Release 以 `agentsync_*` 为主产物。v3.2.x 额外提供内容相同的 `aic_*` 兼容产物，使 v3.1.2 客户端能够完成升级：
+正式 Release 以 `agentsync_*` 为主产物。v3.2.1 仍额外提供内容相同的 `aic_*` 升级兼容产物，使 v3.1.2 客户端能够完成升级：
 
 - `agentsync_Darwin_arm64`、`aic_Darwin_arm64`
 - `agentsync_Darwin_x86_64`、`aic_Darwin_x86_64`
@@ -44,7 +44,7 @@ curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/instal
 
 - 自动识别 Zsh 或 Bash；
 - 为 Codex、Claude、Antigravity 创建规则入口；
-- 将 `agentsync` 放入 `~/.local/bin`，并在 v3.2.x 创建 `aic`、`ai-instructions` 兼容入口；
+- 仅将 `agentsync` 放入 `~/.local/bin`；
 - 立即下载并部署第一份规则。
 
 如果传入 GitHub 文件页面，例如：
@@ -122,7 +122,7 @@ Shell 集成会在启动 Codex、Claude 或 Antigravity 前执行一次 `agentsy
 ```text
 ~/.config/ai-instructions/              配置、已安装二进制和 Shell 集成
 ~/.local/share/ai-instructions-runtime/ 规则版本与当前版本链接
-~/.local/bin/                            agentsync 主入口及 v3.2.x 兼容入口
+~/.local/bin/                            agentsync 命令入口
 ~/.codex/AGENTS.md                       Codex 规则入口
 ~/.claude/CLAUDE.md                      Claude 规则入口
 ~/.gemini/GEMINI.md                      Antigravity 规则入口

@@ -50,13 +50,44 @@ func TestPrepareExecuteIdempotent(t *testing.T) {
 	if err := Execute(p, c); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"agentsync", "aic", "ai-instructions"} {
-		if _, err := os.Readlink(filepath.Join(c.BinDir, name)); err != nil {
-			t.Fatalf("missing %s: %v", name, err)
+	if _, err := os.Readlink(filepath.Join(c.BinDir, "agentsync")); err != nil {
+		t.Fatalf("missing agentsync: %v", err)
+	}
+	for _, name := range []string{"aic", "ai-instructions"} {
+		if _, err := os.Lstat(filepath.Join(c.BinDir, name)); !os.IsNotExist(err) {
+			t.Fatalf("legacy entry still exists: %s (%v)", name, err)
 		}
 	}
 	if _, err := os.Readlink(filepath.Join(c.CodexHome, "AGENTS.md")); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestExecuteRemovesManagedLegacyLinksAndPreservesForeignFiles(t *testing.T) {
+	i, o, c := fixture(t)
+	installed := filepath.Join(c.ConfigDir, "bin", "ai-instructions")
+	if err := os.MkdirAll(c.BinDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(installed, filepath.Join(c.BinDir, "aic")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(c.BinDir, "ai-instructions"), []byte("foreign\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	p, err := i.Prepare(context.Background(), o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Execute(p, c); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(c.BinDir, "aic")); !os.IsNotExist(err) {
+		t.Fatalf("managed legacy link still exists: %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(c.BinDir, "ai-instructions"))
+	if err != nil || string(data) != "foreign\n" {
+		t.Fatalf("foreign legacy path changed: data=%q err=%v", data, err)
 	}
 }
 func TestPreflightConflictZeroWrite(t *testing.T) {
