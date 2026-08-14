@@ -55,7 +55,7 @@ func Build(c config.Config, shell string) Plan {
 		}
 	}
 	for _, binPath := range []string{installed, legacyInstalled} {
-		if data, err := os.ReadFile(binPath); err == nil && (strings.Contains(string(data), identity.VersionOutputName) || strings.Contains(string(data), "ai-instructions")) {
+		if data, err := os.ReadFile(binPath); err == nil && (strings.Contains(string(data), "agentsync") || strings.Contains(string(data), "ai-instructions")) {
 			p.Files = append(p.Files, binPath)
 		}
 	}

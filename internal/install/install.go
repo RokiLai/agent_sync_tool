@@ -216,7 +216,7 @@ func managedFile(path string, data []byte, c config.Config) bool {
 		return first == config.ManagedMarker || first == config.LegacyManagedMarker
 	}
 	if path == filepath.Join(c.ConfigDir, "bin", identity.ManagedBinaryName) || path == filepath.Join(c.ConfigDir, "bin/ai-instructions") {
-		return strings.Contains(string(data), identity.VersionOutputName) || strings.Contains(string(data), "ai-instructions")
+		return strings.Contains(string(data), "agentsync") || strings.Contains(string(data), "ai-instructions")
 	}
 	return false
 }

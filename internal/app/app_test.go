@@ -174,7 +174,7 @@ func TestHelpAndVersion(t *testing.T) {
 	for _, test := range []struct {
 		args     []string
 		expected string
-	}{{nil, "用法：agentsync"}, {[]string{"--version"}, "agentsync " + Version + "\n"}, {[]string{"-V"}, "agentsync " + Version + "\n"}} {
+	}{{nil, "用法：agentsync"}, {[]string{"--version"}, "ai-instructions " + Version + "\n"}, {[]string{"-V"}, "ai-instructions " + Version + "\n"}} {
 		deps, stdout, _, _ := testDeps(t)
 		if code := Main(context.Background(), test.args, deps); code != 0 || !strings.Contains(stdout.String(), test.expected) {
 			t.Fatalf("args=%v code=%d output=%q", test.args, code, stdout.String())
