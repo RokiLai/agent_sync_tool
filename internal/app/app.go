@@ -378,7 +378,7 @@ const Usage = `用法：aic <命令> [选项]
   install      安装工具、同步规则、创建 AI 入口并配置 Shell
   sync         从已保存的 HTTP(S) 链接原子部署最新 AGENTS.md
   source       查看、验证或更换 AGENTS.md 来源链接
-  upgrade      从 origin/main 安全升级工具本体
+  upgrade      检查并升级到最新正式版本
   status       显示仓库、runtime 和入口状态
   doctor       检查依赖、版本一致性、入口和 Shell 配置
   shell-init   输出 Zsh/Bash wrapper，可供 source/eval 使用

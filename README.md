@@ -4,6 +4,8 @@ Agent Sync Tool 是一个用于集中管理 AI 编程助手规则的命令行工
 
 命令行名称为 `aic`，同时提供完整名称 `ai-instructions`。
 
+核心 CLI 完全使用 Go 实现。`install.sh` 只负责首次下载和校验 Release 二进制；生成的 Shell 集成只负责在启动 AI 工具前同步规则，不包含另一套 CLI 实现。
+
 ## 功能
 
 - 从一个远程 `AGENTS.md` 同步多种 AI 工具的共享规则。
@@ -61,12 +63,14 @@ curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/instal
       --tools codex --shell none
 ```
 
-固定安装 v3.1.1：
+固定安装指定版本：
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/install.sh \
-  | AIC_VERSION=v3.1.1 sh -s -- https://example.org/path/to/AGENTS.md
+  | AIC_VERSION=vX.Y.Z sh -s -- https://example.org/path/to/AGENTS.md
 ```
+
+将 `vX.Y.Z` 替换为 Releases 中存在的版本标签。
 
 完整安装和恢复说明见 [安装、升级与恢复](docs/install-and-recovery.md)。
 
@@ -131,9 +135,10 @@ Shell 集成会在启动 Codex、Claude 或 Antigravity 前执行一次 `aic syn
 项目使用 Go 标准库，不依赖第三方 Go 模块。
 
 ```sh
-go test -race -timeout 2m ./...
-go vet ./...
+make verify
 ```
+
+`make verify` 会检查格式、运行 `go vet` 和全量 race 测试，并交叉构建 macOS、Linux 的 amd64 与 arm64 产物；GitHub Actions 使用相同的纯 Go 质量门禁。
 
 构建当前平台二进制：
 

@@ -80,14 +80,16 @@ curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/instal
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/install.sh \
-  | AIC_VERSION=v3.1.1 sh -s -- https://example.org/path/to/AGENTS.md
+  | AIC_VERSION=vX.Y.Z sh -s -- https://example.org/path/to/AGENTS.md
 ```
+
+将 `vX.Y.Z` 替换为 Releases 中存在的版本标签。
 
 私有镜像或测试环境可以覆盖 Release 根地址：
 
 ```sh
 AIC_RELEASE_BASE_URL=https://downloads.example.org/agent-sync/releases \
-AIC_VERSION=v3.1.1 \
+AIC_VERSION=vX.Y.Z \
 sh install.sh https://example.org/path/to/AGENTS.md
 ```
 
@@ -152,7 +154,7 @@ aic upgrade
 固定升级目标：
 
 ```sh
-AIC_VERSION=v3.1.1 aic upgrade
+AIC_VERSION=vX.Y.Z aic upgrade
 ```
 
 升级流程会：

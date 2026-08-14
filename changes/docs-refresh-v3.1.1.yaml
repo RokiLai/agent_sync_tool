@@ -1,0 +1,19 @@
+task: docs-refresh-v3.1.1
+summary: 更新纯 Go 项目边界、升级架构、版本示例和内置帮助
+allowed_paths:
+  - changes/docs-refresh-v3.1.1.yaml
+  - README.md
+  - docs/architecture.md
+  - docs/install-and-recovery.md
+  - internal/app/app.go
+  - test/contract/golden/help.txt
+constraints:
+  - 不修改现有公开命令和运行行为
+  - 保留 install.sh、shell-init 和终端自动同步能力
+  - 固定版本示例使用不易过期的占位符
+  - 不修改历史变更清单和重构方案文档
+verification:
+  - 变更范围检查
+  - 帮助 golden 测试
+  - Go vet 与全量 race 测试
+  - 文档链接和版本引用检查

@@ -13,6 +13,7 @@ cmd/aic
       ├─ integration       AI 工具入口与 Shell 集成
       ├─ diagnose          status 和 doctor
       ├─ upgrade           Release 升级
+      ├─ terminalprogress  TTY 动态进度与非交互日志
       └─ uninstall         卸载计划和执行
 
 internal/core              稳定的共享兼容原语
@@ -21,7 +22,7 @@ internal/managedfs         原子写入和符号链接
 internal/lock              跨进程同步锁
 ```
 
-业务模块不直接依赖其他业务模块，通过应用层编排或基础模块共享稳定能力。
+业务模块通过应用层编排或基础模块共享稳定能力。`terminalprogress` 是终端展示适配层，只消费升级进度事件，不负责下载、校验或安装决策。
 
 ## 配置布局
 
@@ -113,3 +114,5 @@ SHA1("blob " + 内容字节数 + NUL + 原始内容)
 ## Release 安全
 
 安装和升级针对当前系统选择固定资产名称，下载 `checksums.txt` 后验证 SHA-256。候选二进制通过 `version` 自检后，升级才会在同一目录内使用原子重命名替换当前工具。
+
+升级分为两个阶段：先从 Release 重定向和 checksum 清单识别目标版本，展示当前版本与目标版本并在交互终端请求确认；确认后才流式下载候选二进制。下载过程通过进度事件交给终端展示层，TTY 使用动态单行进度，非交互环境输出稳定日志。候选版本必须与目标 Release 一致，任何下载、checksum、版本或替换失败都不会修改当前工具。
