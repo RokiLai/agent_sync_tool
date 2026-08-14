@@ -159,3 +159,7 @@ sh scripts/verify-release.sh dist
 - [命令参考](docs/command-reference.md)
 - [架构与数据安全](docs/architecture.md)
 - [Releases](https://github.com/RokiLai/agent_sync_tool/releases)
+
+## 许可证
+
+本项目基于 [Apache-2.0](LICENSE) 许可证开源。

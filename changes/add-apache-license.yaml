@@ -1,0 +1,14 @@
+task: add-apache-license
+summary: 添加 Apache-2.0 开源许可证并在 README 中说明
+allowed_paths:
+  - changes/add-apache-license.yaml
+  - LICENSE
+  - README.md
+constraints:
+  - 包含标准的 Apache License 2.0 完整文本
+  - 不修改任何业务逻辑与公开命令
+  - README 中增加许可证章节并指向 LICENSE
+verification:
+  - 变更范围检查
+  - Go vet 与全量回归测试
+  - make verify 全量检查
