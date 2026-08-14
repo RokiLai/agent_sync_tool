@@ -1,0 +1,12 @@
+task: refactor-readme-layout
+summary: 重构精简 README.md 布局与排版，提升项目门面可读性
+allowed_paths:
+  - changes/refactor-readme-layout.yaml
+  - README.md
+constraints:
+  - 不修改任何业务逻辑与公开命令
+  - 保留核心安装、常用命令与文档超链接
+  - 清晰展示支持的 AI 工具入口映射与 Apache-2.0 许可证说明
+verification:
+  - 变更范围检查
+  - make verify 全量检查
