@@ -99,3 +99,76 @@ func TestDoctorHealthyManagedState(t *testing.T) {
 		t.Fatalf("ok=%v output=%s", ok, out.String())
 	}
 }
+
+func TestStatusAndDoctorSuggestInstallForUnmanagedDetectedTools(t *testing.T) {
+	home := t.TempDir()
+	repo := filepath.Join(home, "repo")
+	cfg := filepath.Join(home, "config")
+	run := filepath.Join(home, "runtime")
+	bin := filepath.Join(home, "bin")
+	codex := filepath.Join(home, "codex")
+	claudeDir := filepath.Join(home, ".claude")
+	for _, dir := range []string{filepath.Join(repo, ".git"), filepath.Join(cfg, "bin"), run, bin, codex, claudeDir} {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	data := []byte("rules\n")
+	rev := runtime.Revision(data)
+	if err := os.WriteFile(filepath.Join(cfg, "agents-url"), []byte(config.AgentsURLMarker+"\nhttps://example.test/rules\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfg, "repo-path"), []byte(config.RepoPathMarker+"\n"+repo+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfg, "shell-integration.sh"), []byte(config.ManagedMarker+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(run, "AGENTS.md"), data, 0444); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(run, "REVISION"), []byte(rev+"\n"), 0444); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, ".zshrc"), []byte(config.BlockBegin+"\n"+config.BlockEnd+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfg, "bin/agentsync"), []byte("#!/bin/sh\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	runtimeFile := filepath.Join(run, "AGENTS.md")
+	installed := filepath.Join(cfg, "bin/agentsync")
+	if err := os.Symlink(runtimeFile, filepath.Join(codex, "AGENTS.md")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(installed, filepath.Join(bin, "agentsync")); err != nil {
+		t.Fatal(err)
+	}
+
+	c := config.Config{
+		Paths:        config.Paths{HomeDir: home, RuntimeDir: run, ConfigDir: cfg, BinDir: bin, CodexHome: codex, RepositoryDir: repo},
+		EnabledTools: []string{"codex"},
+	}
+
+	deps := Dependencies{
+		LookPath: func(name string) (string, error) {
+			if name == "claude" || name == "git" || name == "curl" || name == "codex" {
+				return "/bin/" + name, nil
+			}
+			return "", errors.New("missing")
+		},
+		GitRev: func(string) string { return "deadbeef" },
+	}
+
+	var statusOut bytes.Buffer
+	Status(&statusOut, c, deps)
+	if !strings.Contains(statusOut.String(), "检测到 Claude 已安装但未接入规则；运行 agentsync install 可自动接入") {
+		t.Fatalf("expected status to suggest install for claude, got:\n%s", statusOut.String())
+	}
+
+	var doctorOut bytes.Buffer
+	Doctor(&doctorOut, c, deps, "/bin/zsh")
+	if !strings.Contains(doctorOut.String(), "检测到未接入规则的 AI 工具（Claude）；运行 agentsync install 可自动接入") {
+		t.Fatalf("expected doctor to suggest install for claude, got:\n%s", doctorOut.String())
+	}
+}

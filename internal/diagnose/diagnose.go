@@ -11,6 +11,7 @@ import (
 	"github.com/RokiLai/agent_sync_tool/internal/config"
 	"github.com/RokiLai/agent_sync_tool/internal/core"
 	"github.com/RokiLai/agent_sync_tool/internal/identity"
+	"github.com/RokiLai/agent_sync_tool/internal/probe"
 )
 
 type Dependencies struct {
@@ -59,6 +60,11 @@ func Status(out io.Writer, c config.Config, deps Dependencies) {
 	for _, k := range c.EnabledTools {
 		enabledMap[k] = true
 	}
+	detected := probe.DetectTools(deps.LookPath, c.HomeDir, c.CodexHome)
+	detectedMap := map[string]bool{}
+	for _, k := range detected.DetectedKeys {
+		detectedMap[k] = true
+	}
 	for _, tool := range identity.SupportedTools() {
 		targetPath := tool.TargetPath(c.HomeDir, c.CodexHome)
 		if enabledMap[tool.Key] {
@@ -66,6 +72,8 @@ func Status(out io.Writer, c config.Config, deps Dependencies) {
 		} else {
 			if symlinkEquals(targetPath, runtimeFile) {
 				entryStatus(out, tool.DisplayName, targetPath, runtimeFile)
+			} else if detectedMap[tool.Key] {
+				fmt.Fprintf(out, "[INFO] 检测到 %s 已安装但未接入规则；运行 %s install 可自动接入：%s\n", tool.DisplayName, identity.PrimaryCommand, targetPath)
 			} else {
 				fmt.Fprintf(out, "[INFO] %s 入口未安装：%s\n", tool.DisplayName, targetPath)
 			}
@@ -185,6 +193,18 @@ func Doctor(out io.Writer, c config.Config, deps Dependencies, shell string) boo
 				warnings++
 			}
 		}
+	}
+
+	detected := probe.DetectTools(deps.LookPath, c.HomeDir, c.CodexHome)
+	var unmanagedDetected []string
+	for _, tool := range detected.DetectedTools {
+		targetPath := tool.TargetPath(c.HomeDir, c.CodexHome)
+		if !enabledMap[tool.Key] || !symlinkEquals(targetPath, runtimeFile) {
+			unmanagedDetected = append(unmanagedDetected, tool.DisplayName)
+		}
+	}
+	if len(unmanagedDetected) > 0 {
+		info(out, "检测到未接入规则的 AI 工具（%s）；运行 %s install 可自动接入", strings.Join(unmanagedDetected, "、"), identity.PrimaryCommand)
 	}
 
 	info(out, "检查完成：%d 个失败，%d 个警告", failures, warnings)

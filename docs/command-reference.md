@@ -123,7 +123,7 @@ agentsync -V
 输出格式：
 
 ```text
-ai-instructions 3.5.0
+ai-instructions 3.5.1
 ```
 
 保留 `ai-instructions` 输出前缀以保证旧版本客户端在升级时能够正确校验候选版本。

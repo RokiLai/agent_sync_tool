@@ -1,0 +1,15 @@
+task: suggest-install-for-unmanaged-detected-tools
+summary: 当探测到系统中存在新安装但未接入受管规则的 AI 工具时，在 status 和 doctor 中输出友好引导提示
+allowed_paths:
+  - changes/suggest-install-for-unmanaged-detected-tools.yaml
+  - internal/diagnose/**
+  - test/**
+  - docs/**
+  - VERSION
+constraints:
+  - 在 status 中对已探测到但未安装规则入口的工具提示运行 agentsync install 自动接入
+  - 在 doctor 中对已探测到环境但未受管的工具增加友好引导提示
+  - 保持已有成功/失败退出码不变
+verification:
+  - 单元测试覆盖检测到新工具时的 status 与 doctor 引导输出
+  - 全量回归测试 make verify 通过

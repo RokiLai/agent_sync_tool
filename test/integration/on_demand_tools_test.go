@@ -94,8 +94,8 @@ func TestOnDemandToolsInstallationAndLifecycle(t *testing.T) {
 	if !strings.Contains(stdout, "[OK] Claude 入口：") {
 		t.Fatalf("expected OK for Claude in status, got:\n%s", stdout)
 	}
-	if !strings.Contains(stdout, "[INFO] Codex 入口未安装") || !strings.Contains(stdout, "[INFO] Antigravity 入口未安装") {
-		t.Fatalf("expected INFO for uninstalled tools in status, got:\n%s", stdout)
+	if !strings.Contains(stdout, "检测到 Codex 已安装但未接入规则；运行 agentsync install 可自动接入") || !strings.Contains(stdout, "检测到 Antigravity 已安装但未接入规则；运行 agentsync install 可自动接入") {
+		t.Fatalf("expected install suggestion for unmanaged detected tools in status, got:\n%s", stdout)
 	}
 
 	// 4. 验证 doctor 诊断
