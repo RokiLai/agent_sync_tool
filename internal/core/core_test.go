@@ -130,3 +130,14 @@ func TestRCInstallValidateAndRemove(t *testing.T) {
 		t.Fatal("unexpected RC path")
 	}
 }
+
+func TestShellInitIncludesCompletions(t *testing.T) {
+	c := config.Config{Paths: config.Paths{BinDir: "/tmp/testbin"}}
+	out := ShellInit(c)
+	if !strings.Contains(out, "_agentsync_zsh_complete") {
+		t.Errorf("ShellInit missing Zsh completion")
+	}
+	if !strings.Contains(out, "_agentsync_bash_complete") {
+		t.Errorf("ShellInit missing Bash completion")
+	}
+}

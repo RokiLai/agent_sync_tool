@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/RokiLai/agent_sync_tool/internal/completion"
 	"github.com/RokiLai/agent_sync_tool/internal/config"
 	"github.com/RokiLai/agent_sync_tool/internal/identity"
 )
@@ -49,6 +50,8 @@ export PATH
 	if len(aliases) > 0 {
 		sb.WriteString("\n" + strings.Join(aliases, "\n") + "\n")
 	}
+
+	sb.WriteString("\n" + completion.ShellInitScript())
 
 	return sb.String()
 }

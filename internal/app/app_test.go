@@ -30,6 +30,10 @@ func testDeps(t *testing.T) (Dependencies, *bytes.Buffer, *bytes.Buffer, string)
 }
 
 func TestUpgradeChecksConfirmsAndRendersProgress(t *testing.T) {
+	origVersion := Version
+	Version = "3.2.2"
+	defer func() { Version = origVersion }()
+
 	deps, stdout, stderr, home := testDeps(t)
 	installed := filepath.Join(home, "config/bin/ai-instructions")
 	if err := os.MkdirAll(filepath.Dir(installed), 0755); err != nil {

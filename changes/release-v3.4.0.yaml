@@ -1,0 +1,21 @@
+task: release-v3.4.0
+summary: 发布 v3.4.0 版本（CLI 原生 Zsh 与 Bash 自动补全支持）
+allowed_paths:
+  - changes/release-v3.4.0.yaml
+  - changes/cli-shell-completion.yaml
+  - VERSION
+  - internal/completion/completion.go
+  - internal/completion/completion_test.go
+  - internal/core/shell.go
+  - internal/core/core_test.go
+  - internal/integration/shell_test.go
+  - internal/app/app_test.go
+  - test/integration/completion_test.go
+constraints:
+  - 版本号统一为 3.4.0，Git 标签统一为 v3.4.0
+  - 发布产物通过 make release 构建、校验 SHA-256 并通过真实升级冒烟验证
+verification:
+  - make verify 全量质量门禁（gofmt, vet, race, cross-build）
+  - make release 打包并校验 release 产物
+  - GitHub CLI Release 发布验证
+  - 上一正式版本连接真实公开服务升级冒烟测试

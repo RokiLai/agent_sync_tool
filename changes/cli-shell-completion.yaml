@@ -1,0 +1,19 @@
+task: cli-shell-completion
+summary: 为 agentsync CLI 增加 Zsh 和 Bash 自动补全支持，并在 shell-init 中内置集成
+allowed_paths:
+  - changes/cli-shell-completion.yaml
+  - internal/completion/completion.go
+  - internal/completion/completion_test.go
+  - internal/core/shell.go
+  - internal/core/core_test.go
+  - internal/integration/shell_test.go
+  - test/integration/completion_test.go
+constraints:
+  - 零外部第三方依赖（纯 Go 标准库与标准 Shell 补全脚本）
+  - 补全内容覆盖 agentsync 所有一级命令与二级参数/选项
+  - 生成的补全脚本必须同时通过 bash -n 与 zsh -n 语法校验
+  - 采用方案 B：在 shell-init 中自动内置加载补全逻辑
+verification:
+  - 运行 internal/completion 单元测试
+  - 运行 test/integration/completion_test.go 校验真实 Shell 语法与补全集成
+  - make verify 全量质量门禁
