@@ -3,15 +3,19 @@ package app
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/RokiLai/agent_sync_tool/internal/config"
+	"github.com/RokiLai/agent_sync_tool/internal/core"
 	"github.com/RokiLai/agent_sync_tool/internal/runtime"
 )
 
@@ -21,6 +25,135 @@ func testDeps(t *testing.T) (Dependencies, *bytes.Buffer, *bytes.Buffer, string)
 	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 	env := map[string]string{"HOME": home, "AI_INSTRUCTIONS_CONFIG_DIR": filepath.Join(home, "config"), "AI_INSTRUCTIONS_RUNTIME_DIR": filepath.Join(home, "runtime"), "AI_INSTRUCTIONS_BIN_DIR": filepath.Join(home, "bin"), "CODEX_HOME": filepath.Join(home, "codex")}
 	return Dependencies{Stdout: stdout, Stderr: stderr, Executable: "/missing/aic", LookupEnv: func(key string) (string, bool) { value, ok := env[key]; return value, ok }}, stdout, stderr, home
+}
+
+func TestUpgradeChecksConfirmsAndRendersProgress(t *testing.T) {
+	deps, stdout, stderr, home := testDeps(t)
+	installed := filepath.Join(home, "config/bin/ai-instructions")
+	if err := os.MkdirAll(filepath.Dir(installed), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(installed, []byte("#!/bin/sh\nprintf 'ai-instructions 3.1.0\\n'\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	candidate := []byte("#!/bin/sh\nprintf 'ai-instructions 3.2.0\\n'\n")
+	sum := sha256.Sum256(candidate)
+	artifact, err := core.CurrentArtifact()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var artifactRequests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/latest/download/checksums.txt" {
+			http.Redirect(w, r, "/download/v3.2.0/checksums.txt", http.StatusFound)
+			return
+		}
+		if filepath.Base(r.URL.Path) == "checksums.txt" {
+			fmt.Fprintf(w, "%x  %s\n", sum, artifact)
+			return
+		}
+		artifactRequests.Add(1)
+		w.Header().Set("Content-Length", fmt.Sprint(len(candidate)))
+		_, _ = w.Write(candidate)
+	}))
+	defer server.Close()
+	oldLookup := deps.LookupEnv
+	deps.LookupEnv = func(key string) (string, bool) {
+		switch key {
+		case "AIC_RELEASE_BASE_URL":
+			return server.URL, true
+		case "AIC_VERSION":
+			return "latest", true
+		}
+		return oldLookup(key)
+	}
+	deps.HTTPClient = server.Client()
+	deps.Stdin = strings.NewReader("y\n")
+	deps.IsTerminal = func() bool { return true }
+	deps.IsOutputTerminal = func() bool { return true }
+	if code := Main(context.Background(), []string{"upgrade"}, deps); code != 0 {
+		t.Fatalf("code=%d out=%q err=%q", code, stdout.String(), stderr.String())
+	}
+	got, _ := os.ReadFile(installed)
+	if string(got) != string(candidate) || artifactRequests.Load() != 1 {
+		t.Fatalf("artifactRequests=%d installed=%q", artifactRequests.Load(), got)
+	}
+	for _, want := range []string{"当前版本：v3.1.0", "最新版本：v3.2.0", "100%", "升级成功：v3.1.0 → v3.2.0"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("out=%q missing=%q", stdout.String(), want)
+		}
+	}
+}
+
+func TestUpgradeCancelDoesNotDownloadArtifact(t *testing.T) {
+	deps, stdout, stderr, home := testDeps(t)
+	installed := filepath.Join(home, "config/bin/ai-instructions")
+	if err := os.MkdirAll(filepath.Dir(installed), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(installed, []byte("old"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	var artifactRequests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/latest/download/checksums.txt" {
+			http.Redirect(w, r, "/download/v3.2.0/checksums.txt", http.StatusFound)
+			return
+		}
+		if filepath.Base(r.URL.Path) == "checksums.txt" {
+			fmt.Fprintln(w, "abc  ignored")
+			return
+		}
+		artifactRequests.Add(1)
+	}))
+	defer server.Close()
+	oldLookup := deps.LookupEnv
+	deps.LookupEnv = func(key string) (string, bool) {
+		if key == "AIC_RELEASE_BASE_URL" {
+			return server.URL, true
+		}
+		return oldLookup(key)
+	}
+	deps.HTTPClient = server.Client()
+	deps.Stdin = strings.NewReader("n\n")
+	deps.IsTerminal = func() bool { return true }
+	if code := Main(context.Background(), []string{"upgrade"}, deps); code != 0 || artifactRequests.Load() != 0 || !strings.Contains(stdout.String(), "已取消升级") {
+		t.Fatalf("code=%d requests=%d out=%q err=%q", code, artifactRequests.Load(), stdout.String(), stderr.String())
+	}
+}
+
+func TestUpgradeCurrentVersionSkipsArtifact(t *testing.T) {
+	deps, stdout, stderr, home := testDeps(t)
+	installed := filepath.Join(home, "config/bin/ai-instructions")
+	if err := os.MkdirAll(filepath.Dir(installed), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(installed, []byte("old"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	var artifactRequests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if filepath.Base(r.URL.Path) == "checksums.txt" {
+			fmt.Fprintln(w, "abc  ignored")
+			return
+		}
+		artifactRequests.Add(1)
+	}))
+	defer server.Close()
+	oldLookup := deps.LookupEnv
+	deps.LookupEnv = func(key string) (string, bool) {
+		switch key {
+		case "AIC_RELEASE_BASE_URL":
+			return server.URL, true
+		case "AIC_VERSION":
+			return "v3.1.0", true
+		}
+		return oldLookup(key)
+	}
+	deps.HTTPClient = server.Client()
+	if code := Main(context.Background(), []string{"upgrade"}, deps); code != 0 || artifactRequests.Load() != 0 || !strings.Contains(stdout.String(), "当前已是最新版本") {
+		t.Fatalf("code=%d requests=%d out=%q err=%q", code, artifactRequests.Load(), stdout.String(), stderr.String())
+	}
 }
 
 func TestHelpAndVersion(t *testing.T) {

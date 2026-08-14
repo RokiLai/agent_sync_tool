@@ -64,7 +64,9 @@ aic source set URL
 aic upgrade
 ```
 
-从 GitHub Release 下载当前平台的最新正式二进制，校验 checksum 和候选版本后原子替换已安装工具。
+先查询 GitHub Release，展示当前版本和最新正式版本。当前已是最新版本时直接结束，不下载完整二进制；发现新版本且运行于真实终端时，确认后才下载并安装。
+
+交互终端使用单行动态进度条展示下载大小和百分比，并展示 SHA-256 校验、候选版本验证和原子安装状态。stdout 被重定向或在 CI 中运行时自动使用无 ANSI 控制符的逐行日志，并保持非交互自动升级兼容性。
 
 可以用 `AIC_VERSION` 固定版本，用 `AIC_RELEASE_BASE_URL` 覆盖 Release 根地址。
 

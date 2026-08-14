@@ -18,10 +18,19 @@ func projectRoot(t *testing.T) string {
 }
 
 func buildAIC(t *testing.T) string {
+	return buildAICVersion(t, "")
+}
+
+func buildAICVersion(t *testing.T, version string) string {
 	t.Helper()
 	root := projectRoot(t)
 	target := filepath.Join(t.TempDir(), "aic")
-	cmd := exec.Command("go", "build", "-o", target, "./cmd/aic")
+	args := []string{"build", "-o", target}
+	if version != "" {
+		args = append(args, "-ldflags", "-X github.com/RokiLai/agent_sync_tool/internal/app.Version="+version)
+	}
+	args = append(args, "./cmd/aic")
+	cmd := exec.Command("go", args...)
 	cmd.Dir = root
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build: %v\n%s", err, out)

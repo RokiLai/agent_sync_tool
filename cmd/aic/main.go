@@ -15,6 +15,7 @@ func main() {
 	defer stop()
 	os.Exit(app.Main(ctx, os.Args[1:], app.Dependencies{
 		Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Executable: executable,
-		IsTerminal: func() bool { info, err := os.Stdin.Stat(); return err == nil && info.Mode()&os.ModeCharDevice != 0 },
+		IsTerminal:       func() bool { info, err := os.Stdin.Stat(); return err == nil && info.Mode()&os.ModeCharDevice != 0 },
+		IsOutputTerminal: func() bool { info, err := os.Stdout.Stat(); return err == nil && info.Mode()&os.ModeCharDevice != 0 },
 	}))
 }

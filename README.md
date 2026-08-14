@@ -103,6 +103,8 @@ aic source set https://example.org/new/AGENTS.md
 aic upgrade
 ```
 
+升级会先显示当前版本和最新正式版本。真实终端发现新版本时会请求确认，确认后以动态进度条展示下载、校验和原子安装进度；当前已是最新版本时不会下载完整二进制。输出被重定向或运行在 CI 中时，进度会自动降级为稳定的逐行日志并保持原有的自动升级行为。
+
 ## 工作方式
 
 规则内容按 Git blob SHA-1 生成内容版本，发布到 runtime 的 `versions/<revision>`。`current` 通过原子符号链接切换到有效版本，兼容入口始终指向 `current/AGENTS.md`。

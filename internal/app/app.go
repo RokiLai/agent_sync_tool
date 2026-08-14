@@ -19,6 +19,7 @@ import (
 	"github.com/RokiLai/agent_sync_tool/internal/managedfs"
 	"github.com/RokiLai/agent_sync_tool/internal/runtime"
 	"github.com/RokiLai/agent_sync_tool/internal/source"
+	"github.com/RokiLai/agent_sync_tool/internal/terminalprogress"
 	"github.com/RokiLai/agent_sync_tool/internal/uninstall"
 	"github.com/RokiLai/agent_sync_tool/internal/upgrade"
 )
@@ -26,13 +27,14 @@ import (
 var Version = "3.1.0"
 
 type Dependencies struct {
-	Stdin          io.Reader
-	Stdout, Stderr io.Writer
-	LookupEnv      config.LookupEnv
-	Executable     string
-	HTTPClient     *http.Client
-	Diagnose       diagnose.Dependencies
-	IsTerminal     func() bool
+	Stdin            io.Reader
+	Stdout, Stderr   io.Writer
+	LookupEnv        config.LookupEnv
+	Executable       string
+	HTTPClient       *http.Client
+	Diagnose         diagnose.Dependencies
+	IsTerminal       func() bool
+	IsOutputTerminal func() bool
 }
 
 func Main(ctx context.Context, args []string, deps Dependencies) int {
@@ -44,6 +46,9 @@ func Main(ctx context.Context, args []string, deps Dependencies) int {
 	}
 	if deps.IsTerminal == nil {
 		deps.IsTerminal = func() bool { return false }
+	}
+	if deps.IsOutputTerminal == nil {
+		deps.IsOutputTerminal = func() bool { return false }
 	}
 	if deps.Stderr == nil {
 		deps.Stderr = io.Discard
@@ -186,14 +191,40 @@ func Main(ctx context.Context, args []string, deps Dependencies) int {
 		base, _ := deps.LookupEnv("AIC_RELEASE_BASE_URL")
 		version, _ := deps.LookupEnv("AIC_VERSION")
 		installed := filepath.Join(c.ConfigDir, "bin/ai-instructions")
-		result, err := upgrade.Run(ctx, upgrade.Options{Installed: installed, BaseURL: base, Version: version, Client: deps.HTTPClient})
+		options := upgrade.Options{Installed: installed, BaseURL: base, Version: version, CurrentVersion: Version, Client: deps.HTTPClient}
+		fmt.Fprintln(deps.Stdout, "正在检查更新...")
+		plan, err := upgrade.Check(ctx, options)
 		if err != nil {
 			return fail(deps.Stderr, err.Error())
 		}
+		fmt.Fprintf(deps.Stdout, "当前版本：v%s\n", plan.CurrentVersion)
+		if plan.TargetVersion == "" {
+			return fail(deps.Stderr, "无法从 Release 响应识别最新版本；当前工具保持不变")
+		}
+		fmt.Fprintf(deps.Stdout, "最新版本：v%s\n", plan.TargetVersion)
+		if plan.CurrentVersion == plan.TargetVersion {
+			fmt.Fprintf(deps.Stdout, "[OK] 当前已是最新版本：v%s\n", plan.CurrentVersion)
+			return 0
+		}
+		if deps.IsTerminal() {
+			fmt.Fprintf(deps.Stderr, "是否升级到 v%s？ [Y/n] ", plan.TargetVersion)
+			answer, _ := bufio.NewReader(deps.Stdin).ReadString('\n')
+			if !upgradeYes(answer) {
+				fmt.Fprintf(deps.Stdout, "[INFO] 已取消升级，当前版本仍为 v%s\n", plan.CurrentVersion)
+				return 0
+			}
+		}
+		renderer := terminalprogress.New(deps.Stdout, deps.IsOutputTerminal())
+		options.Progress = renderer.Update
+		result, err := upgrade.Apply(ctx, options, plan)
+		if err != nil {
+			renderer.Fail()
+			return fail(deps.Stderr, err.Error())
+		}
 		if result.Changed {
-			fmt.Fprintf(deps.Stdout, "[OK] 工具升级完成：%s\n", result.Version)
+			fmt.Fprintf(deps.Stdout, "[OK] 升级成功：v%s → v%s\n", plan.CurrentVersion, result.Version)
 		} else {
-			fmt.Fprintf(deps.Stdout, "[OK] 工具已是最新版本：%s\n", result.Version)
+			fmt.Fprintf(deps.Stdout, "[OK] 工具内容未变化：v%s\n", result.Version)
 		}
 	default:
 		return fail(deps.Stderr, fmt.Sprintf("未知命令：%s（运行 ai-instructions help 查看帮助）", command))
@@ -335,6 +366,10 @@ func githubURLNotice(w io.Writer, normalized string) {
 	fmt.Fprintf(w, "[INFO] 检测到 GitHub 文件页面，已转换为原始文件地址：\n%s\n", normalized)
 }
 func yes(value string) bool { value = strings.TrimSpace(value); return value == "y" || value == "Y" }
+func upgradeYes(value string) bool {
+	value = strings.TrimSpace(value)
+	return value == "" || value == "y" || value == "Y"
+}
 
 const Usage = `用法：aic <命令> [选项]
 完整命令名：ai-instructions

@@ -17,6 +17,7 @@ import (
 
 func TestBinaryGoToGoUpgradeAndRollback(t *testing.T) {
 	binary := buildAIC(t)
+	candidateBinary := buildAICVersion(t, "3.2.0")
 	home := t.TempDir()
 	configDir := filepath.Join(home, "config/bin")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
@@ -27,7 +28,7 @@ func TestBinaryGoToGoUpgradeAndRollback(t *testing.T) {
 	if err := os.WriteFile(installed, old, 0700); err != nil {
 		t.Fatal(err)
 	}
-	candidate, err := os.ReadFile(binary)
+	candidate, err := os.ReadFile(candidateBinary)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,6 +39,10 @@ func TestBinaryGoToGoUpgradeAndRollback(t *testing.T) {
 	}
 	var bad atomic.Bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/latest/download/checksums.txt" {
+			http.Redirect(w, r, "/download/v3.2.0/checksums.txt", http.StatusFound)
+			return
+		}
 		if filepath.Base(r.URL.Path) == "checksums.txt" {
 			if bad.Load() {
 				fmt.Fprintf(w, "deadbeef  %s\n", artifact)
@@ -53,7 +58,7 @@ func TestBinaryGoToGoUpgradeAndRollback(t *testing.T) {
 	cmd := exec.Command(binary, "upgrade")
 	cmd.Env = env
 	out, err := cmd.CombinedOutput()
-	if err != nil || !strings.Contains(string(out), "工具升级完成") {
+	if err != nil || !strings.Contains(string(out), "升级成功：v3.1.0 → v3.2.0") || strings.Contains(string(out), "\x1b[") {
 		t.Fatalf("out=%s err=%v", out, err)
 	}
 	before, _ := os.ReadFile(installed)
