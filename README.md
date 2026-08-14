@@ -1,16 +1,146 @@
-# agent_sync_tool
+# Agent Sync Tool
 
-`ai-instructions` 的 Go 兼容性重构项目。源 Shell 项目保持独立，默认位于相邻目录 `../ai-instructions`。
+Agent Sync Tool 是一个用于集中管理 AI 编程助手规则的命令行工具。它从一个 HTTP(S) 地址获取 `AGENTS.md`，以只读、可回滚的版本保存到本机，并为 Codex、Claude 和 Antigravity 创建统一入口。
 
-当前已完成 Go 迁移阶段 6，提供Release二进制安装、checksum验证和原子升级，并保持Shell/Go双实现兼容验证。现有36个Shell黑盒场景、稳定帮助与版本输出、受管marker和Git blob SHA-1固定向量记录在`test/contract`。
+命令行名称为 `aic`，同时提供完整名称 `ai-instructions`。
 
-双实现兼容验证与回退说明见 `docs/migration-compatibility.md`。
+## 功能
 
-本地验证：
+- 从一个远程 `AGENTS.md` 同步多种 AI 工具的共享规则。
+- 使用内容版本目录和原子符号链接切换，避免读取到半写入状态。
+- 网络失败时保留最后一次成功部署的有效规则。
+- 切换规则来源前完成下载和校验，失败时保持现有配置不变。
+- 安装前检查路径冲突，不覆盖普通文件或不受管配置。
+- 使用 Release 二进制和 SHA-256 checksum 安装、升级。
+- 提供 `status` 和 `doctor` 检查来源、runtime、工具入口及 Shell 集成。
+- 卸载前展示固定计划，只删除本工具明确管理的对象。
+
+## 支持平台
+
+- macOS：Apple Silicon、Intel
+- Linux：arm64、x86_64
+- WSL 2：使用 Linux x86_64 产物
+
+正式 Release 包含：
+
+- `aic_Darwin_arm64`
+- `aic_Darwin_x86_64`
+- `aic_Linux_arm64`
+- `aic_Linux_x86_64`
+- `checksums.txt`
+
+## 安装
+
+准备一个能够直接下载的 `AGENTS.md` HTTPS 地址，然后执行：
 
 ```sh
-sh scripts/verify-shell-contracts.sh
-go test -race ./...
+curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/install.sh \
+  | sh -s -- https://example.org/path/to/AGENTS.md
 ```
 
-也可以通过 `AI_INSTRUCTIONS_SOURCE_PROJECT` 指定只读源项目路径。
+请把示例地址替换为你自己的规则文件地址。默认会：
+
+- 自动识别 Zsh 或 Bash；
+- 为 Codex、Claude、Antigravity 创建规则入口；
+- 将 `aic` 和 `ai-instructions` 放入 `~/.local/bin`；
+- 立即下载并部署第一份规则。
+
+只配置 Codex 且不修改 Shell 启动文件：
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/install.sh \
+  | sh -s -- https://example.org/path/to/AGENTS.md \
+      --tools codex --shell none
+```
+
+固定安装 v3.0.1：
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/install.sh \
+  | AIC_VERSION=v3.0.1 sh -s -- https://example.org/path/to/AGENTS.md
+```
+
+完整安装和恢复说明见 [安装、升级与恢复](docs/install-and-recovery.md)。
+
+## 快速开始
+
+```sh
+aic version
+aic status
+aic doctor
+aic sync
+```
+
+查看当前规则来源：
+
+```sh
+aic source
+```
+
+验证另一个来源，但不修改配置：
+
+```sh
+aic source test https://example.org/new/AGENTS.md
+```
+
+交互式切换来源：
+
+```sh
+aic source set https://example.org/new/AGENTS.md
+```
+
+升级到最新正式版本：
+
+```sh
+aic upgrade
+```
+
+## 工作方式
+
+规则内容按 Git blob SHA-1 生成内容版本，发布到 runtime 的 `versions/<revision>`。`current` 通过原子符号链接切换到有效版本，兼容入口始终指向 `current/AGENTS.md`。
+
+Shell 集成会在启动 Codex、Claude 或 Antigravity 前执行一次 `aic sync`。同步失败且没有有效缓存时，不会继续启动对应工具；已有有效缓存时会显示警告并继续使用最后一次成功版本。
+
+详细设计见 [架构与数据安全](docs/architecture.md)。
+
+## 默认目录
+
+```text
+~/.config/ai-instructions/              配置、已安装二进制和 Shell 集成
+~/.local/share/ai-instructions-runtime/ 规则版本与当前版本链接
+~/.local/bin/                            aic 和 ai-instructions 命令入口
+~/.codex/AGENTS.md                       Codex 规则入口
+~/.claude/CLAUDE.md                      Claude 规则入口
+~/.gemini/GEMINI.md                      Antigravity 规则入口
+```
+
+所有目录都可以通过环境变量调整，详见 [命令参考](docs/command-reference.md)。
+
+## 开发
+
+项目使用 Go 标准库，不依赖第三方 Go 模块。
+
+```sh
+go test -race -timeout 2m ./...
+go vet ./...
+```
+
+构建当前平台二进制：
+
+```sh
+go build -o aic ./cmd/aic
+```
+
+构建并校验全部 Release 产物：
+
+```sh
+sh scripts/build-release.sh dist
+sh scripts/verify-release.sh dist
+```
+
+## 更多文档
+
+- [安装、升级与恢复](docs/install-and-recovery.md)
+- [命令参考](docs/command-reference.md)
+- [架构与数据安全](docs/architecture.md)
+- [Releases](https://github.com/RokiLai/agent_sync_tool/releases)

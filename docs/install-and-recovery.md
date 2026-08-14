@@ -1,13 +1,196 @@
 # 安装、升级与恢复
 
-安装脚本根据操作系统和架构下载GitHub Release二进制及`checksums.txt`，SHA-256验证成功后才执行安装。
+Agent Sync Tool 通过 GitHub Release 提供单文件二进制。安装脚本会识别系统和架构，下载对应产物及 `checksums.txt`，通过 SHA-256 校验后才执行安装。
+
+## 安装要求
+
+- macOS、Linux 或 WSL 2
+- `curl`
+- `shasum` 或 `sha256sum`
+- 一个能够直接下载的单行 HTTP(S) `AGENTS.md` 地址
+
+## 标准安装
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/install.sh | sh -s -- https://example.com/AGENTS.md
+curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/install.sh \
+  | sh -s -- https://example.org/path/to/AGENTS.md
 ```
 
-测试或镜像环境可设置`AIC_RELEASE_BASE_URL`；固定版本可设置`AIC_VERSION=vX.Y.Z`。
+示例 URL 必须替换为实际规则文件地址。重定向后的最终地址也必须使用 HTTP(S)。
 
-`aic upgrade`使用相同下载与校验流程，并在安装目录内原子替换。下载、checksum或候选执行失败时，当前工具保持不变。
+默认选项相当于：
 
-回退到Shell实现时保留现有配置和runtime，恢复旧工具本体即可，无需迁移用户数据。
+```text
+--shell auto
+--tools codex,claude,agy
+```
+
+`--shell auto` 根据当前 `$SHELL` 选择 Zsh 或 Bash；无法识别时不修改 Shell 配置。
+
+## 自定义工具和 Shell
+
+只为 Codex 创建入口：
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/install.sh \
+  | sh -s -- https://example.org/path/to/AGENTS.md \
+      --tools codex
+```
+
+同时配置 Codex 和 Claude：
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/install.sh \
+  | sh -s -- https://example.org/path/to/AGENTS.md \
+      --tools codex,claude
+```
+
+不修改 `.zshrc` 或 `.bashrc`：
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/install.sh \
+  | sh -s -- https://example.org/path/to/AGENTS.md \
+      --shell none
+```
+
+明确选择 Shell：
+
+```sh
+# Zsh
+... | sh -s -- https://example.org/path/to/AGENTS.md --shell zsh
+
+# Bash
+... | sh -s -- https://example.org/path/to/AGENTS.md --shell bash
+```
+
+## 固定版本安装
+
+默认安装最新正式版本。固定到指定版本：
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/install.sh \
+  | AIC_VERSION=v3.0.1 sh -s -- https://example.org/path/to/AGENTS.md
+```
+
+私有镜像或测试环境可以覆盖 Release 根地址：
+
+```sh
+AIC_RELEASE_BASE_URL=https://downloads.example.org/agent-sync/releases \
+AIC_VERSION=v3.0.1 \
+sh install.sh https://example.org/path/to/AGENTS.md
+```
+
+## 安装前预检
+
+安装会先完成规则下载、内容校验和全部目标路径检查。以下情况会拒绝安装且不写入任何目标：
+
+- 命令入口位置存在普通文件；
+- AI 工具规则入口已指向其他目标；
+- 配置文件没有本工具的受管标识；
+- Shell 配置包含不完整的受管块；
+- runtime 布局不完整或包含非预期链接。
+
+可以先查看计划：
+
+```sh
+aic install https://example.org/path/to/AGENTS.md --dry-run
+```
+
+## 安装后检查
+
+```sh
+aic version
+aic status
+aic doctor
+```
+
+`status` 展示安装模式、规则来源、runtime 版本和工具入口。`doctor` 进一步检查依赖、内容版本一致性、命令入口及 Shell 配置，并在存在关键失败时返回非零状态。
+
+## 同步与更换来源
+
+手动同步：
+
+```sh
+aic sync
+```
+
+查看或测试来源：
+
+```sh
+aic source
+aic source test
+aic source test https://example.org/other/AGENTS.md
+```
+
+交互式更换来源：
+
+```sh
+aic source set https://example.org/other/AGENTS.md
+```
+
+新来源会在询问确认前完成下载和校验。取消、下载失败或发布失败时，原来源和当前 runtime 保持不变。
+
+## 升级
+
+升级到最新正式版本：
+
+```sh
+aic upgrade
+```
+
+固定升级目标：
+
+```sh
+AIC_VERSION=v3.0.1 aic upgrade
+```
+
+升级流程会：
+
+1. 下载 checksum 清单；
+2. 下载当前平台候选二进制；
+3. 验证 SHA-256；
+4. 执行候选的 `version` 命令；
+5. 在安装目录内原子替换工具本体。
+
+下载、checksum、候选执行或替换失败时，当前工具保持不变。
+
+## 故障恢复
+
+### 网络不可用
+
+普通 `aic sync` 下载失败时，如果 runtime 中已有有效规则，会警告并继续使用最后一次成功版本。首次安装或更换来源不会用缓存冒充成功。
+
+### 检查当前状态
+
+```sh
+aic status
+aic doctor
+```
+
+runtime 当前内容可以直接读取：
+
+```sh
+cat ~/.local/share/ai-instructions-runtime/AGENTS.md
+cat ~/.local/share/ai-instructions-runtime/REVISION
+```
+
+### 重新安装
+
+对同一 URL 重复执行安装是幂等操作，可用于恢复缺失的受管入口：
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/install.sh \
+  | sh -s -- https://example.org/path/to/AGENTS.md
+```
+
+重新安装不会覆盖不受管文件；遇到冲突时应先检查并人工决定如何处理该路径。
+
+## 卸载
+
+```sh
+aic uninstall
+```
+
+卸载必须在交互式终端运行。工具会先展示固定计划，第一次确认是否删除受管命令、配置、Shell 块和 AI 工具入口，第二次确认是否同时删除规则 runtime。所有确认默认都是“否”。
+
+未选择清理 runtime 时，可以稍后检查或手动备份已部署规则。
