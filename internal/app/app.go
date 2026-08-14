@@ -27,7 +27,7 @@ import (
 	"github.com/RokiLai/agent_sync_tool/internal/upgrade"
 )
 
-var Version = "3.3.0"
+var Version = "3.3.1"
 
 type Dependencies struct {
 	Stdin            io.Reader
@@ -109,7 +109,13 @@ func Main(ctx context.Context, args []string, deps Dependencies) int {
 			},
 			LookPath: deps.Diagnose.LookPath,
 		}
+		installMsg := ""
+		if deps.IsOutputTerminal() {
+			installMsg = "正在预检并准备安装..."
+		}
+		installSpinner := terminalprogress.StartSpinner(deps.Stdout, deps.IsOutputTerminal(), installMsg)
 		plan, err := installer.Prepare(ctx, options)
+		installSpinner.Stop()
 		if err != nil {
 			return fail(deps.Stderr, fmt.Sprintf("安装预检失败：%v；未修改任何文件", err))
 		}
@@ -158,7 +164,13 @@ func Main(ctx context.Context, args []string, deps Dependencies) int {
 			}
 			return 0
 		}
+		syncMsg := ""
+		if deps.IsOutputTerminal() {
+			syncMsg = "正在同步 AI 规则..."
+		}
+		syncSpinner := terminalprogress.StartSpinner(deps.Stderr, deps.IsOutputTerminal(), syncMsg)
 		state, err := syncer.Sync(ctx, raw, false)
+		syncSpinner.Stop()
 		if errors.Is(err, runtime.ErrUsingCache) {
 			fmt.Fprintf(deps.Stderr, "警告：AGENTS.md 下载或校验失败；使用最后一次成功部署的有效缓存：%s\n", state.Revision)
 			return 0
@@ -222,8 +234,9 @@ func Main(ctx context.Context, args []string, deps Dependencies) int {
 		version, _ := deps.LookupEnv("AIC_VERSION")
 		installed := filepath.Join(c.ConfigDir, "bin", identity.ManagedBinaryName)
 		options := upgrade.Options{Installed: installed, BaseURL: base, Version: version, CurrentVersion: Version, Client: deps.HTTPClient}
-		fmt.Fprintln(deps.Stdout, "正在检查更新...")
+		spinner := terminalprogress.StartSpinner(deps.Stdout, deps.IsOutputTerminal(), "正在检查更新...")
 		plan, err := upgrade.Check(ctx, options)
+		spinner.Stop()
 		if err != nil {
 			return fail(deps.Stderr, err.Error())
 		}
@@ -300,7 +313,13 @@ func sourceCommand(ctx context.Context, args []string, c config.Config, deps Dep
 			githubURLNotice(deps.Stdout, raw)
 		}
 		fmt.Fprintf(deps.Stdout, "正在检查：\n%s\n", raw)
+		testMsg := ""
+		if deps.IsOutputTerminal() {
+			testMsg = "正在下载并校验规则..."
+		}
+		testSpinner := terminalprogress.StartSpinner(deps.Stdout, deps.IsOutputTerminal(), testMsg)
 		data, err := source.Download(ctx, deps.HTTPClient, raw)
+		testSpinner.Stop()
 		if err != nil {
 			fmt.Fprintf(deps.Stderr, "来源检查失败：\n%s\n", raw)
 			return fail(deps.Stderr, "原因：下载或校验失败")
@@ -328,8 +347,10 @@ func sourceCommand(ctx context.Context, args []string, c config.Config, deps Dep
 		if changed {
 			githubURLNotice(deps.Stdout, newURL)
 		}
-		fmt.Fprintf(deps.Stdout, "当前来源：\n%s\n新来源：\n%s\n正在验证新来源...\n", oldURL, newURL)
+		fmt.Fprintf(deps.Stdout, "当前来源：\n%s\n新来源：\n%s\n", oldURL, newURL)
+		setSpinner := terminalprogress.StartSpinner(deps.Stdout, deps.IsOutputTerminal(), "正在验证新来源...")
 		data, err := source.Download(ctx, deps.HTTPClient, newURL)
+		setSpinner.Stop()
 		if err != nil {
 			return fail(deps.Stderr, "新来源验证失败；当前来源和 runtime 保持不变")
 		}

@@ -1,0 +1,17 @@
+task: terminal-spinner-loading
+summary: 引入 TTY Spinner 动态加载指示器，优化 upgrade、source 和 sync 的等待反馈
+allowed_paths:
+  - changes/terminal-spinner-loading.yaml
+  - internal/terminalprogress/progress.go
+  - internal/terminalprogress/progress_test.go
+  - internal/app/app.go
+  - internal/app/app_test.go
+constraints:
+  - 交互式 TTY 终端下使用 Braille Spinner (⠋⠙⠹...) 动态刷新
+  - 非交互式 / 管道环境保持静态输出或不输出控制字符，确保日志整洁无 ANSI 转义序列
+  - 耗时任务结束后自动清理 Spinner 动效行或无缝衔接后续输出
+  - 纯标准库实现，不引入第三方依赖
+verification:
+  - Spinner 交互与非交互模式单元测试
+  - Spinner Stop/并发安全及清理测试
+  - make verify 全量检查（vet, race, cross-build）通过

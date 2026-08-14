@@ -116,3 +116,84 @@ func size(bytes int64) string {
 	}
 	return ""
 }
+
+var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+type Spinner struct {
+	out         io.Writer
+	interactive bool
+	message     string
+	stop        chan struct{}
+	done        chan struct{}
+	mu          sync.Mutex
+	stopped     bool
+}
+
+func StartSpinner(out io.Writer, interactive bool, message string) *Spinner {
+	if out == nil {
+		out = io.Discard
+	}
+	s := &Spinner{
+		out:         out,
+		interactive: interactive,
+		message:     message,
+		stop:        make(chan struct{}),
+		done:        make(chan struct{}),
+	}
+	if !interactive {
+		if message != "" {
+			fmt.Fprintln(out, message)
+		}
+		close(s.done)
+		return s
+	}
+
+	go s.run()
+	return s
+}
+
+func (s *Spinner) run() {
+	defer close(s.done)
+	ticker := time.NewTicker(80 * time.Millisecond)
+	defer ticker.Stop()
+
+	i := 0
+	if s.message != "" {
+		fmt.Fprintf(s.out, "\r\033[2K%s %s", spinnerFrames[0], s.message)
+	} else {
+		fmt.Fprintf(s.out, "\r\033[2K%s", spinnerFrames[0])
+	}
+
+	for {
+		select {
+		case <-s.stop:
+			fmt.Fprint(s.out, "\r\033[2K")
+			return
+		case <-ticker.C:
+			i++
+			frame := spinnerFrames[i%len(spinnerFrames)]
+			if s.message != "" {
+				fmt.Fprintf(s.out, "\r\033[2K%s %s", frame, s.message)
+			} else {
+				fmt.Fprintf(s.out, "\r\033[2K%s", frame)
+			}
+		}
+	}
+}
+
+func (s *Spinner) Stop() {
+	s.mu.Lock()
+	if s.stopped {
+		s.mu.Unlock()
+		return
+	}
+	s.stopped = true
+	s.mu.Unlock()
+
+	if !s.interactive {
+		return
+	}
+
+	close(s.stop)
+	<-s.done
+}

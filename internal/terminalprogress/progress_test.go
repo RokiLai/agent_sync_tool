@@ -3,7 +3,9 @@ package terminalprogress
 import (
 	"bytes"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/RokiLai/agent_sync_tool/internal/upgrade"
 )
@@ -59,5 +61,65 @@ func TestInteractiveStageLabelsAndUnknownLength(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Fatalf("output %q missing %q", got, want)
 		}
+	}
+}
+
+type safeBuffer struct {
+	b  bytes.Buffer
+	mu sync.Mutex
+}
+
+func (s *safeBuffer) Write(p []byte) (n int, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.Write(p)
+}
+
+func (s *safeBuffer) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.String()
+}
+
+func TestInteractiveSpinnerCyclesAndClearsOnStop(t *testing.T) {
+	var out safeBuffer
+	s := StartSpinner(&out, true, "正在检查更新...")
+	time.Sleep(180 * time.Millisecond)
+	s.Stop()
+	s.Stop() // idempotent
+
+	got := out.String()
+	if !strings.Contains(got, "正在检查更新...") {
+		t.Fatalf("expected message in output: %q", got)
+	}
+	if !strings.Contains(got, "\r\033[2K") {
+		t.Fatalf("expected ANSI line clear code: %q", got)
+	}
+	if !strings.HasSuffix(got, "\r\033[2K") {
+		t.Fatalf("expected stopped spinner to end with line clear: %q", got)
+	}
+}
+
+func TestNonInteractiveSpinnerPrintsStaticLine(t *testing.T) {
+	var out bytes.Buffer
+	s := StartSpinner(&out, false, "正在检查更新...")
+	s.Stop()
+
+	got := out.String()
+	if got != "正在检查更新...\n" {
+		t.Fatalf("unexpected non-interactive output: %q", got)
+	}
+	if strings.Contains(got, "\033[") || strings.Contains(got, "\r") {
+		t.Fatalf("non-interactive output must not contain ANSI escapes: %q", got)
+	}
+}
+
+func TestNonInteractiveSpinnerEmptyMessageNoOutput(t *testing.T) {
+	var out bytes.Buffer
+	s := StartSpinner(&out, false, "")
+	s.Stop()
+
+	if out.Len() != 0 {
+		t.Fatalf("expected empty output, got: %q", out.String())
 	}
 }

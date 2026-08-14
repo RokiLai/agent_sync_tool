@@ -11,8 +11,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/RokiLai/agent_sync_tool/internal/config"
 	"github.com/RokiLai/agent_sync_tool/internal/core"
@@ -28,19 +30,15 @@ func testDeps(t *testing.T) (Dependencies, *bytes.Buffer, *bytes.Buffer, string)
 }
 
 func TestUpgradeChecksConfirmsAndRendersProgress(t *testing.T) {
-	origVersion := Version
-	Version = "3.2.2"
-	defer func() { Version = origVersion }()
-
 	deps, stdout, stderr, home := testDeps(t)
 	installed := filepath.Join(home, "config/bin/ai-instructions")
 	if err := os.MkdirAll(filepath.Dir(installed), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(installed, []byte("#!/bin/sh\nprintf 'ai-instructions 3.2.2\\n'\n"), 0700); err != nil {
+	if err := os.WriteFile(installed, []byte("#!/bin/sh\nprintf 'ai-instructions 3.3.1\\n'\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	candidate := []byte("#!/bin/sh\nprintf 'ai-instructions 3.3.0\\n'\n")
+	candidate := []byte("#!/bin/sh\nprintf 'ai-instructions 3.4.0\\n'\n")
 	sum := sha256.Sum256(candidate)
 	artifact, err := core.CurrentArtifact()
 	if err != nil {
@@ -49,7 +47,7 @@ func TestUpgradeChecksConfirmsAndRendersProgress(t *testing.T) {
 	var artifactRequests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/latest/download/checksums.txt" {
-			http.Redirect(w, r, "/download/v3.3.0/checksums.txt", http.StatusFound)
+			http.Redirect(w, r, "/download/v3.4.0/checksums.txt", http.StatusFound)
 			return
 		}
 		if filepath.Base(r.URL.Path) == "checksums.txt" {
@@ -82,7 +80,7 @@ func TestUpgradeChecksConfirmsAndRendersProgress(t *testing.T) {
 	if string(got) != string(candidate) || artifactRequests.Load() != 1 {
 		t.Fatalf("artifactRequests=%d installed=%q", artifactRequests.Load(), got)
 	}
-	for _, want := range []string{"当前版本：v3.2.2", "最新版本：v3.3.0", "100%", "升级成功：v3.2.2 → v3.3.0"} {
+	for _, want := range []string{"当前版本：v3.3.1", "最新版本：v3.4.0", "100%", "升级成功：v3.3.1 → v3.4.0"} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("out=%q missing=%q", stdout.String(), want)
 		}
@@ -443,5 +441,70 @@ func TestUninstallCancelAndExecute(t *testing.T) {
 		if input != "\n" && !os.IsNotExist(err) {
 			t.Fatalf("execute kept link: %v", err)
 		}
+	}
+}
+
+type safeTestBuffer struct {
+	b  bytes.Buffer
+	mu sync.Mutex
+}
+
+func (s *safeTestBuffer) Write(p []byte) (n int, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.Write(p)
+}
+
+func (s *safeTestBuffer) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.String()
+}
+
+func TestUpgradeInteractiveTerminalSpinner(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(50 * time.Millisecond)
+		if r.URL.Path == "/latest/download/checksums.txt" {
+			http.Redirect(w, r, "/download/v3.3.1/checksums.txt", http.StatusFound)
+			return
+		}
+		if filepath.Base(r.URL.Path) == "checksums.txt" {
+			fmt.Fprintln(w, "checksums")
+			return
+		}
+	}))
+	defer server.Close()
+
+	deps, _, stderr, home := testDeps(t)
+	installed := filepath.Join(home, "config/bin/ai-instructions")
+	if err := os.MkdirAll(filepath.Dir(installed), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(installed, []byte("#!/bin/sh\nprintf 'ai-instructions 3.3.1\\n'\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout safeTestBuffer
+	deps.Stdout = &stdout
+	deps.IsOutputTerminal = func() bool { return true }
+	oldLookup := deps.LookupEnv
+	deps.LookupEnv = func(key string) (string, bool) {
+		if key == "AIC_RELEASE_BASE_URL" {
+			return server.URL, true
+		}
+		return oldLookup(key)
+	}
+	deps.HTTPClient = server.Client()
+
+	code := Main(context.Background(), []string{"upgrade"}, deps)
+	if code != 0 {
+		t.Fatalf("expected code 0, got %d out=%s err=%s", code, stdout.String(), stderr.String())
+	}
+	got := stdout.String()
+	if !strings.Contains(got, "当前已是最新版本") {
+		t.Fatalf("missing expected output in %q", got)
+	}
+	if !strings.Contains(got, "\r\033[2K") {
+		t.Fatalf("expected ANSI spinner line clear in interactive output: %q", got)
 	}
 }

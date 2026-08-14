@@ -16,8 +16,8 @@ import (
 )
 
 func TestBinaryGoToGoUpgradeAndRollback(t *testing.T) {
-	binary := buildAICVersion(t, "3.2.2")
-	candidateBinary := buildAICVersion(t, "3.3.0")
+	binary := buildAICVersion(t, "3.3.0")
+	candidateBinary := buildAIC(t)
 	home := t.TempDir()
 	configDir := filepath.Join(home, "config/bin")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
@@ -40,7 +40,7 @@ func TestBinaryGoToGoUpgradeAndRollback(t *testing.T) {
 	var bad atomic.Bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/latest/download/checksums.txt" {
-			http.Redirect(w, r, "/download/v3.3.0/checksums.txt", http.StatusFound)
+			http.Redirect(w, r, "/download/v3.3.1/checksums.txt", http.StatusFound)
 			return
 		}
 		if filepath.Base(r.URL.Path) == "checksums.txt" {
@@ -58,7 +58,7 @@ func TestBinaryGoToGoUpgradeAndRollback(t *testing.T) {
 	cmd := exec.Command(binary, "upgrade")
 	cmd.Env = env
 	out, err := cmd.CombinedOutput()
-	if err != nil || !strings.Contains(string(out), "升级成功：v3.2.2 → v3.3.0") || strings.Contains(string(out), "\x1b[") {
+	if err != nil || !strings.Contains(string(out), "升级成功：v3.3.0 → v3.3.1") || strings.Contains(string(out), "\x1b[") {
 		t.Fatalf("out=%s err=%v", out, err)
 	}
 	before, _ := os.ReadFile(installed)
