@@ -33,7 +33,7 @@ func TestUpgradeChecksConfirmsAndRendersProgress(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(installed), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(installed, []byte("#!/bin/sh\nprintf 'ai-instructions 3.1.1\\n'\n"), 0700); err != nil {
+	if err := os.WriteFile(installed, []byte("#!/bin/sh\nprintf 'ai-instructions 3.1.2\\n'\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
 	candidate := []byte("#!/bin/sh\nprintf 'ai-instructions 3.2.0\\n'\n")
@@ -78,7 +78,7 @@ func TestUpgradeChecksConfirmsAndRendersProgress(t *testing.T) {
 	if string(got) != string(candidate) || artifactRequests.Load() != 1 {
 		t.Fatalf("artifactRequests=%d installed=%q", artifactRequests.Load(), got)
 	}
-	for _, want := range []string{"当前版本：v3.1.1", "最新版本：v3.2.0", "100%", "升级成功：v3.1.1 → v3.2.0"} {
+	for _, want := range []string{"当前版本：v3.1.2", "最新版本：v3.2.0", "100%", "升级成功：v3.1.2 → v3.2.0"} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("out=%q missing=%q", stdout.String(), want)
 		}
@@ -146,7 +146,7 @@ func TestUpgradeCurrentVersionSkipsArtifact(t *testing.T) {
 		case "AIC_RELEASE_BASE_URL":
 			return server.URL, true
 		case "AIC_VERSION":
-			return "v3.1.1", true
+			return "v3.1.2", true
 		}
 		return oldLookup(key)
 	}
@@ -160,7 +160,7 @@ func TestHelpAndVersion(t *testing.T) {
 	for _, test := range []struct {
 		args     []string
 		expected string
-	}{{nil, "用法：aic"}, {[]string{"--version"}, "ai-instructions 3.1.1\n"}, {[]string{"-V"}, "ai-instructions 3.1.1\n"}} {
+	}{{nil, "用法：aic"}, {[]string{"--version"}, "ai-instructions 3.1.2\n"}, {[]string{"-V"}, "ai-instructions 3.1.2\n"}} {
 		deps, stdout, _, _ := testDeps(t)
 		if code := Main(context.Background(), test.args, deps); code != 0 || !strings.Contains(stdout.String(), test.expected) {
 			t.Fatalf("args=%v code=%d output=%q", test.args, code, stdout.String())

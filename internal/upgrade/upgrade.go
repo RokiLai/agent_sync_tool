@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -41,7 +42,7 @@ type Result struct {
 	Version string
 }
 
-var releaseTagPattern = regexp.MustCompile(`/download/([^/]+)/checksums\.txt$`)
+var releaseTagPattern = regexp.MustCompile(`^[vV]?[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$`)
 
 func Check(ctx context.Context, o Options) (Plan, error) {
 	o = defaults(o)
@@ -55,18 +56,13 @@ func Check(ctx context.Context, o Options) (Plan, error) {
 	if err := validateInstalled(o.Installed); err != nil {
 		return Plan{}, err
 	}
-	checks, finalURL, err := download(ctx, o.Client, core.ReleaseURL(o.BaseURL, o.Version, "checksums.txt"), nil)
+	checks, redirects, err := download(ctx, o.Client, core.ReleaseURL(o.BaseURL, o.Version, "checksums.txt"), nil)
 	if err != nil {
 		return Plan{}, fmt.Errorf("查询最新版本失败；当前工具保持不变: %w", err)
 	}
 	target := strings.TrimPrefix(o.Version, "v")
 	if o.Version == "latest" {
-		match := releaseTagPattern.FindStringSubmatch(finalURL)
-		if len(match) == 2 {
-			target = strings.TrimPrefix(match[1], "v")
-		} else {
-			target = ""
-		}
+		target = releaseVersion(o.BaseURL, redirects)
 	}
 	return Plan{CurrentVersion: strings.TrimPrefix(o.CurrentVersion, "v"), TargetVersion: target, Artifact: o.Artifact, checksums: checks}, nil
 }
@@ -161,18 +157,32 @@ func validateInstalled(path string) error {
 	return nil
 }
 
-func download(ctx context.Context, client *http.Client, rawURL string, progress func(int64, int64)) ([]byte, string, error) {
+func download(ctx context.Context, client *http.Client, rawURL string, progress func(int64, int64)) ([]byte, []string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
-	resp, err := client.Do(req)
+	redirects := []string{rawURL}
+	redirectClient := *client
+	originalCheckRedirect := client.CheckRedirect
+	redirectClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if originalCheckRedirect != nil {
+			if err := originalCheckRedirect(req, via); err != nil {
+				return err
+			}
+		} else if len(via) >= 10 {
+			return errors.New("stopped after 10 redirects")
+		}
+		redirects = append(redirects, req.URL.String())
+		return nil
+	}
+	resp, err := redirectClient.Do(req)
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, "", fmt.Errorf("HTTP状态：%s", resp.Status)
+		return nil, nil, fmt.Errorf("HTTP状态：%s", resp.Status)
 	}
 	reader := io.Reader(resp.Body)
 	if progress != nil {
@@ -180,12 +190,36 @@ func download(ctx context.Context, client *http.Client, rawURL string, progress 
 	}
 	data, err := io.ReadAll(reader)
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 	if len(data) == 0 {
-		return nil, "", errors.New("下载内容为空")
+		return nil, nil, errors.New("下载内容为空")
 	}
-	return data, resp.Request.URL.String(), nil
+	return data, redirects, nil
+}
+
+func releaseVersion(base string, redirects []string) string {
+	baseURL, err := url.Parse(strings.TrimSuffix(base, "/"))
+	if err != nil || baseURL.Scheme == "" || baseURL.Host == "" {
+		return ""
+	}
+	prefix := strings.TrimSuffix(baseURL.Path, "/") + "/download/"
+	const suffix = "/checksums.txt"
+	for _, raw := range redirects {
+		candidate, err := url.Parse(raw)
+		if err != nil || !strings.EqualFold(candidate.Scheme, baseURL.Scheme) || !strings.EqualFold(candidate.Host, baseURL.Host) {
+			continue
+		}
+		if !strings.HasPrefix(candidate.Path, prefix) || !strings.HasSuffix(candidate.Path, suffix) {
+			continue
+		}
+		tag := strings.TrimSuffix(strings.TrimPrefix(candidate.Path, prefix), suffix)
+		if strings.Contains(tag, "/") || !releaseTagPattern.MatchString(tag) {
+			continue
+		}
+		return strings.TrimPrefix(strings.TrimPrefix(tag, "v"), "V")
+	}
+	return ""
 }
 
 type progressReader struct {

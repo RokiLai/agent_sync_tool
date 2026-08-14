@@ -1,0 +1,25 @@
+task: fix-upgrade-release-version-v3.1.2
+summary: 从可信 Release 重定向链识别最新版本并发布 v3.1.2
+allowed_paths:
+  - changes/fix-upgrade-release-version-v3.1.2.yaml
+  - internal/upgrade/upgrade.go
+  - internal/upgrade/upgrade_test.go
+  - internal/app/app.go
+  - internal/app/app_test.go
+  - scripts/build-release.sh
+  - test/integration/quality_gate_test.go
+  - test/integration/readonly_test.go
+  - test/integration/upgrade_test.go
+  - docs/command-reference.md
+constraints:
+  - 保留 HTTP 客户端既有重定向安全检查
+  - 仅信任与配置 Release 根地址同源且路径匹配的版本跳转
+  - 固定版本、自定义 Release 根地址和 checksum 校验行为保持兼容
+  - 不修改历史变更清单和重构方案文档
+  - 不引入第三方依赖
+verification:
+  - 可信三段重定向测试
+  - 非可信重定向与客户端拒绝回归测试
+  - Go vet 与全量 race 测试
+  - 四平台构建和 Release 产物验证
+  - GitHub Quality、Release 与公开资产验证

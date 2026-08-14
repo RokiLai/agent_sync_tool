@@ -3,6 +3,7 @@ package upgrade
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -61,6 +62,8 @@ func TestCheckFindsReleaseVersionWithoutDownloadingArtifact(t *testing.T) {
 		case "/latest/download/checksums.txt":
 			http.Redirect(w, r, "/download/v3.2.0/checksums.txt", http.StatusFound)
 		case "/download/v3.2.0/checksums.txt":
+			http.Redirect(w, r, "/signed-release-asset/checksums.txt?token=secret", http.StatusFound)
+		case "/signed-release-asset/checksums.txt":
 			fmt.Fprintln(w, "abc  aic_Test")
 		default:
 			artifactRequests.Add(1)
@@ -71,6 +74,41 @@ func TestCheckFindsReleaseVersionWithoutDownloadingArtifact(t *testing.T) {
 	plan, err := Check(context.Background(), Options{Installed: installed, BaseURL: server.URL, CurrentVersion: "3.1.0", Artifact: "aic_Test", Client: server.Client()})
 	if err != nil || plan.CurrentVersion != "3.1.0" || plan.TargetVersion != "3.2.0" || artifactRequests.Load() != 0 {
 		t.Fatalf("plan=%#v artifactRequests=%d err=%v", plan, artifactRequests.Load(), err)
+	}
+}
+
+func TestReleaseVersionOnlyTrustsConfiguredReleaseRoot(t *testing.T) {
+	base := "https://github.com/RokiLai/agent_sync_tool/releases"
+	tests := []struct {
+		name      string
+		redirects []string
+		want      string
+	}{
+		{"trusted", []string{base + "/latest/download/checksums.txt", base + "/download/v3.1.2/checksums.txt", "https://release-assets.githubusercontent.com/signed"}, "3.1.2"},
+		{"uppercase tag", []string{base + "/download/V3.1.2/checksums.txt"}, "3.1.2"},
+		{"foreign host", []string{"https://evil.example/releases/download/v9.9.9/checksums.txt"}, ""},
+		{"different repository", []string{"https://github.com/other/repo/releases/download/v9.9.9/checksums.txt"}, ""},
+		{"nested tag", []string{base + "/download/feature/v3.1.2/checksums.txt"}, ""},
+		{"invalid tag", []string{base + "/download/latest/checksums.txt"}, ""},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := releaseVersion(base, test.redirects); got != test.want {
+				t.Fatalf("got=%q want=%q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestDownloadPreservesClientRedirectPolicy(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/blocked", http.StatusFound)
+	}))
+	defer server.Close()
+	client := server.Client()
+	client.CheckRedirect = func(*http.Request, []*http.Request) error { return errors.New("redirect rejected") }
+	if _, _, err := download(context.Background(), client, server.URL, nil); err == nil || !strings.Contains(err.Error(), "redirect rejected") {
+		t.Fatalf("redirect policy was not preserved: %v", err)
 	}
 }
 

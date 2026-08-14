@@ -124,7 +124,7 @@ aic -V
 输出格式：
 
 ```text
-ai-instructions 3.1.1
+ai-instructions 3.1.2
 ```
 
 ## `help`
