@@ -87,7 +87,7 @@ func TestDoctorHealthyManagedState(t *testing.T) {
 	}
 	runtimeFile := filepath.Join(run, "AGENTS.md")
 	installed := filepath.Join(cfg, "bin/ai-instructions")
-	for path, target := range map[string]string{filepath.Join(codex, "AGENTS.md"): runtimeFile, filepath.Join(home, ".claude/CLAUDE.md"): runtimeFile, filepath.Join(home, ".gemini/GEMINI.md"): runtimeFile, filepath.Join(bin, "ai-instructions"): installed, filepath.Join(bin, "aic"): installed} {
+	for path, target := range map[string]string{filepath.Join(codex, "AGENTS.md"): runtimeFile, filepath.Join(home, ".claude/CLAUDE.md"): runtimeFile, filepath.Join(home, ".gemini/GEMINI.md"): runtimeFile, filepath.Join(bin, "agentsync"): installed, filepath.Join(bin, "aic"): installed, filepath.Join(bin, "ai-instructions"): installed} {
 		if err := os.Symlink(target, path); err != nil {
 			t.Fatal(err)
 		}

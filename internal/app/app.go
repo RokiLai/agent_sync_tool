@@ -13,6 +13,7 @@ import (
 
 	"github.com/RokiLai/agent_sync_tool/internal/config"
 	"github.com/RokiLai/agent_sync_tool/internal/diagnose"
+	"github.com/RokiLai/agent_sync_tool/internal/identity"
 	"github.com/RokiLai/agent_sync_tool/internal/install"
 	"github.com/RokiLai/agent_sync_tool/internal/integration"
 	"github.com/RokiLai/agent_sync_tool/internal/lock"
@@ -24,7 +25,7 @@ import (
 	"github.com/RokiLai/agent_sync_tool/internal/upgrade"
 )
 
-var Version = "3.1.2"
+var Version = "3.2.0"
 
 type Dependencies struct {
 	Stdin            io.Reader
@@ -35,6 +36,7 @@ type Dependencies struct {
 	Diagnose         diagnose.Dependencies
 	IsTerminal       func() bool
 	IsOutputTerminal func() bool
+	ProgramName      string
 }
 
 func Main(ctx context.Context, args []string, deps Dependencies) int {
@@ -62,6 +64,9 @@ func Main(ctx context.Context, args []string, deps Dependencies) int {
 	if deps.Diagnose.LookPath == nil {
 		deps.Diagnose = diagnose.DefaultDependencies()
 	}
+	if identity.IsLegacyCommand(deps.ProgramName) {
+		fmt.Fprintf(deps.Stderr, "[WARN] %s 已更名为 %s；当前版本仍保留兼容入口。\n", deps.ProgramName, identity.PrimaryCommand)
+	}
 	command := "help"
 	if len(args) > 0 {
 		command, args = args[0], args[1:]
@@ -80,7 +85,7 @@ func Main(ctx context.Context, args []string, deps Dependencies) int {
 		if len(args) != 0 {
 			return fail(deps.Stderr, "version 不接受参数")
 		}
-		fmt.Fprintf(deps.Stdout, "ai-instructions %s\n", Version)
+		fmt.Fprintf(deps.Stdout, "%s %s\n", identity.VersionOutputName, Version)
 	case "source":
 		return sourceCommand(ctx, args, c, deps)
 	case "install":
@@ -125,7 +130,7 @@ func Main(ctx context.Context, args []string, deps Dependencies) int {
 		}
 		raw, err := diagnose.ReadAgentsURL(c)
 		if err != nil {
-			return fail(deps.Stderr, "未配置有效的 AGENTS.md 来源；请运行 aic source set <URL>")
+			return fail(deps.Stderr, fmt.Sprintf("未配置有效的 AGENTS.md 来源；请运行 %s source set <URL>", identity.PrimaryCommand))
 		}
 		syncer := newSyncer(c, deps)
 		state, err := syncer.Sync(ctx, raw, false)
@@ -190,7 +195,7 @@ func Main(ctx context.Context, args []string, deps Dependencies) int {
 		}
 		base, _ := deps.LookupEnv("AIC_RELEASE_BASE_URL")
 		version, _ := deps.LookupEnv("AIC_VERSION")
-		installed := filepath.Join(c.ConfigDir, "bin/ai-instructions")
+		installed := filepath.Join(c.ConfigDir, "bin", identity.ManagedBinaryName)
 		options := upgrade.Options{Installed: installed, BaseURL: base, Version: version, CurrentVersion: Version, Client: deps.HTTPClient}
 		fmt.Fprintln(deps.Stdout, "正在检查更新...")
 		plan, err := upgrade.Check(ctx, options)
@@ -227,7 +232,7 @@ func Main(ctx context.Context, args []string, deps Dependencies) int {
 			fmt.Fprintf(deps.Stdout, "[OK] 工具内容未变化：v%s\n", result.Version)
 		}
 	default:
-		return fail(deps.Stderr, fmt.Sprintf("未知命令：%s（运行 ai-instructions help 查看帮助）", command))
+		return fail(deps.Stderr, fmt.Sprintf("未知命令：%s（运行 %s help 查看帮助）", command, identity.PrimaryCommand))
 	}
 	return 0
 }
@@ -278,7 +283,7 @@ func sourceCommand(ctx context.Context, args []string, c config.Config, deps Dep
 		fmt.Fprintf(deps.Stdout, "来源有效。\n内容大小：%s bytes\n内容版本：%s\n", runtime.Size(data), runtime.Revision(data))
 	case "set":
 		if len(args) != 1 {
-			return fail(deps.Stderr, "用法：aic source set <URL>")
+			return fail(deps.Stderr, fmt.Sprintf("用法：%s source set <URL>", identity.PrimaryCommand))
 		}
 		newURL, changed, err := source.NormalizeURL(args[0])
 		if err != nil {
@@ -371,8 +376,8 @@ func upgradeYes(value string) bool {
 	return value == "" || value == "y" || value == "Y"
 }
 
-const Usage = `用法：aic <命令> [选项]
-完整命令名：ai-instructions
+var Usage = fmt.Sprintf(`用法：%s <命令> [选项]
+兼容命令：%s、%s（仅 %s 过渡期保留）
 
 命令：
   install      安装工具、同步规则、创建 AI 入口并配置 Shell
@@ -405,4 +410,4 @@ uninstall：
   AI_INSTRUCTIONS_CONFIG_DIR
   AI_INSTRUCTIONS_BIN_DIR
   CODEX_HOME
-`
+`, identity.PrimaryCommand, identity.LegacyShortCommand, identity.LegacyLongCommand, identity.TransitionSeries)

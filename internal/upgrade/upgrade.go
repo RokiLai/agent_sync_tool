@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/RokiLai/agent_sync_tool/internal/core"
+	"github.com/RokiLai/agent_sync_tool/internal/identity"
 )
 
 type Options struct {
@@ -88,7 +89,7 @@ func Apply(ctx context.Context, o Options, plan Plan) (Result, error) {
 	emit(o, Progress{Stage: "checksum", Name: "SHA-256", Done: true})
 
 	dir := filepath.Dir(o.Installed)
-	temp, err := os.CreateTemp(dir, ".aic-upgrade.*")
+	temp, err := os.CreateTemp(dir, "."+identity.PrimaryCommand+"-upgrade.*")
 	if err != nil {
 		return Result{}, err
 	}
@@ -105,10 +106,11 @@ func Apply(ctx context.Context, o Options, plan Plan) (Result, error) {
 	}
 	emit(o, Progress{Stage: "candidate", Name: "候选版本"})
 	out, err := exec.CommandContext(ctx, tempPath, "version").Output()
-	if err != nil || !strings.HasPrefix(string(out), "ai-instructions ") {
+	versionPrefix := identity.VersionOutputName + " "
+	if err != nil || !strings.HasPrefix(string(out), versionPrefix) {
 		return Result{}, errors.New("候选工具校验失败；当前工具保持不变")
 	}
-	version := strings.TrimSpace(strings.TrimPrefix(string(out), "ai-instructions "))
+	version := strings.TrimSpace(strings.TrimPrefix(string(out), versionPrefix))
 	if plan.TargetVersion != "" && version != plan.TargetVersion {
 		return Result{}, fmt.Errorf("候选版本不匹配：expected=%s actual=%s；当前工具保持不变", plan.TargetVersion, version)
 	}

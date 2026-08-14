@@ -24,12 +24,12 @@ func buildAIC(t *testing.T) string {
 func buildAICVersion(t *testing.T, version string) string {
 	t.Helper()
 	root := projectRoot(t)
-	target := filepath.Join(t.TempDir(), "aic")
+	target := filepath.Join(t.TempDir(), "agentsync")
 	args := []string{"build", "-o", target}
 	if version != "" {
 		args = append(args, "-ldflags", "-X github.com/RokiLai/agent_sync_tool/internal/app.Version="+version)
 	}
-	args = append(args, "./cmd/aic")
+	args = append(args, "./cmd/agentsync")
 	cmd := exec.Command("go", args...)
 	cmd.Dir = root
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -64,7 +64,7 @@ func TestBinaryVersionAliases(t *testing.T) {
 		cmd := exec.Command(binary, arg)
 		cmd.Env = append(os.Environ(), "HOME="+home)
 		out, err := cmd.Output()
-		if err != nil || string(out) != "ai-instructions 3.1.2\n" {
+		if err != nil || string(out) != "ai-instructions 3.2.0\n" {
 			t.Fatalf("arg=%s out=%q err=%v", arg, out, err)
 		}
 	}

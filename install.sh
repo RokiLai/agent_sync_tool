@@ -2,11 +2,13 @@
 set -eu
 base_url=${AIC_RELEASE_BASE_URL:-https://github.com/RokiLai/agent_sync_tool/releases}
 version=${AIC_VERSION:-latest}
-temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/aic-bootstrap.XXXXXX") || exit 1
+command_name=agentsync
+artifact_prefix=agentsync
+temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/${command_name}-bootstrap.XXXXXX") || exit 1
 trap 'rm -rf "$temp_dir"' 0 HUP INT TERM
 case "$(uname -s)" in Darwin) release_os=Darwin ;; Linux) release_os=Linux ;; *) printf '错误：不支持的操作系统\n' >&2; exit 1 ;; esac
 case "$(uname -m)" in x86_64|amd64) release_arch=x86_64 ;; arm64|aarch64) release_arch=arm64 ;; *) printf '错误：不支持的架构\n' >&2; exit 1 ;; esac
-artifact="aic_${release_os}_${release_arch}"
+artifact="${artifact_prefix}_${release_os}_${release_arch}"
 if [ "$version" = latest ]; then release_url="$base_url/latest/download"; else release_url="$base_url/download/$version"; fi
 curl --fail --silent --show-error --location --proto '=https,http' --proto-redir '=https,http' "$release_url/checksums.txt" -o "$temp_dir/checksums.txt"
 curl --fail --silent --show-error --location --proto '=https,http' --proto-redir '=https,http' "$release_url/$artifact" -o "$temp_dir/$artifact"

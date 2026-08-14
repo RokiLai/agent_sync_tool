@@ -5,10 +5,11 @@ import (
 	"path/filepath"
 
 	"github.com/RokiLai/agent_sync_tool/internal/config"
+	"github.com/RokiLai/agent_sync_tool/internal/identity"
 )
 
 func ShellInit(c config.Config) string {
-	launcher := filepath.Join(c.BinDir, "ai-instructions")
+	launcher := filepath.Join(c.BinDir, identity.PrimaryCommand)
 	return fmt.Sprintf(`%s
 case ":$PATH:" in
     *":%s:"*) ;;

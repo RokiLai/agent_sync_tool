@@ -1,0 +1,27 @@
+task: rename-cli-to-agentsync-v3.2.0
+summary: 将主命令更名为 agentsync，并保留一个版本的旧入口与 Release 资产兼容
+allowed_paths:
+  - changes/rename-cli-to-agentsync-v3.2.0.yaml
+  - cmd/**
+  - internal/**
+  - test/**
+  - scripts/**
+  - install.sh
+  - Makefile
+  - README.md
+  - docs/**
+constraints:
+  - agentsync 为主命令，aic 与 ai-instructions 仅在 v3.2.0 作为兼容入口
+  - Release 同时提供 agentsync_* 和 aic_* 资产，保证 v3.1.2 可升级
+  - 版本输出暂时保持 ai-instructions 3.2.0，保证旧候选校验兼容
+  - 保留配置目录、runtime、marker、环境变量和内部受管二进制路径
+  - 不修改历史变更清单和重构方案文档
+  - 不引入第三方依赖
+verification:
+  - 新旧命令入口安装、诊断和卸载测试
+  - 新旧 Release 资产与 checksum 测试
+  - Shell 集成使用 agentsync 测试
+  - Go vet 与全量 race 测试
+  - 四平台构建和 Release 验证
+  - v3.1.2 到 v3.2.0 真实升级验收
+  - agentsync upgrade 真实最新版验收

@@ -33,10 +33,10 @@ func TestUpgradeChecksConfirmsAndRendersProgress(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(installed), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(installed, []byte("#!/bin/sh\nprintf 'ai-instructions 3.1.2\\n'\n"), 0700); err != nil {
+	if err := os.WriteFile(installed, []byte("#!/bin/sh\nprintf 'ai-instructions 3.2.0\\n'\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	candidate := []byte("#!/bin/sh\nprintf 'ai-instructions 3.2.0\\n'\n")
+	candidate := []byte("#!/bin/sh\nprintf 'ai-instructions 3.3.0\\n'\n")
 	sum := sha256.Sum256(candidate)
 	artifact, err := core.CurrentArtifact()
 	if err != nil {
@@ -45,7 +45,7 @@ func TestUpgradeChecksConfirmsAndRendersProgress(t *testing.T) {
 	var artifactRequests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/latest/download/checksums.txt" {
-			http.Redirect(w, r, "/download/v3.2.0/checksums.txt", http.StatusFound)
+			http.Redirect(w, r, "/download/v3.3.0/checksums.txt", http.StatusFound)
 			return
 		}
 		if filepath.Base(r.URL.Path) == "checksums.txt" {
@@ -78,7 +78,7 @@ func TestUpgradeChecksConfirmsAndRendersProgress(t *testing.T) {
 	if string(got) != string(candidate) || artifactRequests.Load() != 1 {
 		t.Fatalf("artifactRequests=%d installed=%q", artifactRequests.Load(), got)
 	}
-	for _, want := range []string{"当前版本：v3.1.2", "最新版本：v3.2.0", "100%", "升级成功：v3.1.2 → v3.2.0"} {
+	for _, want := range []string{"当前版本：v3.2.0", "最新版本：v3.3.0", "100%", "升级成功：v3.2.0 → v3.3.0"} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("out=%q missing=%q", stdout.String(), want)
 		}
@@ -97,7 +97,7 @@ func TestUpgradeCancelDoesNotDownloadArtifact(t *testing.T) {
 	var artifactRequests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/latest/download/checksums.txt" {
-			http.Redirect(w, r, "/download/v3.2.0/checksums.txt", http.StatusFound)
+			http.Redirect(w, r, "/download/v3.3.0/checksums.txt", http.StatusFound)
 			return
 		}
 		if filepath.Base(r.URL.Path) == "checksums.txt" {
@@ -146,7 +146,7 @@ func TestUpgradeCurrentVersionSkipsArtifact(t *testing.T) {
 		case "AIC_RELEASE_BASE_URL":
 			return server.URL, true
 		case "AIC_VERSION":
-			return "v3.1.2", true
+			return "v3.2.0", true
 		}
 		return oldLookup(key)
 	}
@@ -160,10 +160,23 @@ func TestHelpAndVersion(t *testing.T) {
 	for _, test := range []struct {
 		args     []string
 		expected string
-	}{{nil, "用法：aic"}, {[]string{"--version"}, "ai-instructions 3.1.2\n"}, {[]string{"-V"}, "ai-instructions 3.1.2\n"}} {
+	}{{nil, "用法：agentsync"}, {[]string{"--version"}, "ai-instructions 3.2.0\n"}, {[]string{"-V"}, "ai-instructions 3.2.0\n"}} {
 		deps, stdout, _, _ := testDeps(t)
 		if code := Main(context.Background(), test.args, deps); code != 0 || !strings.Contains(stdout.String(), test.expected) {
 			t.Fatalf("args=%v code=%d output=%q", test.args, code, stdout.String())
+		}
+	}
+}
+
+func TestLegacyCommandWarnsAboutRename(t *testing.T) {
+	for _, name := range []string{"aic", "ai-instructions"} {
+		deps, _, stderr, _ := testDeps(t)
+		deps.ProgramName = name
+		if code := Main(context.Background(), []string{"version"}, deps); code != 0 {
+			t.Fatalf("name=%s code=%d", name, code)
+		}
+		if want := "[WARN] " + name + " 已更名为 agentsync"; !strings.Contains(stderr.String(), want) {
+			t.Fatalf("name=%s stderr=%q missing=%q", name, stderr.String(), want)
 		}
 	}
 }

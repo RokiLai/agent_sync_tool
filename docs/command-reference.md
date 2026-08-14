@@ -1,16 +1,15 @@
 # 命令参考
 
 ```text
-aic <命令> [选项]
-ai-instructions <命令> [选项]
+agentsync <命令> [选项]
 ```
 
-两个命令名功能相同。
+`agentsync` 是主命令。v3.2.x 为迁移保留 `aic` 和 `ai-instructions`，功能相同；后续主版本将移除这两个旧入口。
 
 ## `install`
 
 ```sh
-aic install URL [--shell auto|zsh|bash|none] [--tools LIST] [--dry-run]
+agentsync install URL [--shell auto|zsh|bash|none] [--tools LIST] [--dry-run]
 ```
 
 - `URL`：能够直接下载的单行 HTTP(S) `AGENTS.md` 地址；非交互安装必须提供。
@@ -25,7 +24,7 @@ GitHub `blob/main`、`blob/master` 和 `blob/<40位提交SHA>` 文件页会自�
 ## `sync`
 
 ```sh
-aic sync
+agentsync sync
 ```
 
 从已保存来源下载并原子部署最新规则。成功信息写入 stderr，stdout 保持为空，便于 Shell wrapper 使用。
@@ -37,21 +36,21 @@ aic sync
 查看当前来源：
 
 ```sh
-aic source
-aic source show
+agentsync source
+agentsync source show
 ```
 
 验证来源但不修改：
 
 ```sh
-aic source test
-aic source test URL
+agentsync source test
+agentsync source test URL
 ```
 
 交互式更换来源：
 
 ```sh
-aic source set URL
+agentsync source set URL
 ```
 
 `source set` 要求真实终端。新 URL 与当前来源相同时直接成功；否则先下载和校验候选，再显示新旧来源并询问确认。只有 `y` 或 `Y` 会执行切换。
@@ -61,7 +60,7 @@ aic source set URL
 ## `upgrade`
 
 ```sh
-aic upgrade
+agentsync upgrade
 ```
 
 先查询 GitHub Release，展示当前版本和最新正式版本。当前已是最新版本时直接结束，不下载完整二进制；发现新版本且运行于真实终端时，确认后才下载并安装。
@@ -73,7 +72,7 @@ aic upgrade
 ## `status`
 
 ```sh
-aic status
+agentsync status
 ```
 
 显示：
@@ -86,7 +85,7 @@ aic status
 ## `doctor`
 
 ```sh
-aic doctor
+agentsync doctor
 ```
 
 检查依赖、来源配置、runtime 内容一致性、AI 工具入口、已安装工具、命令入口和 Shell 集成。存在关键失败时返回非零；未安装的可选工具或可选入口以警告显示。
@@ -94,7 +93,7 @@ aic doctor
 ## `shell-init`
 
 ```sh
-aic shell-init
+agentsync shell-init
 ```
 
 输出 Zsh/Bash 可加载的集成脚本。安装器通常会将脚本保存到配置目录，并在对应的 `.zshrc` 或 `.bashrc` 中加入受管加载块。
@@ -102,13 +101,13 @@ aic shell-init
 集成脚本提供：
 
 - `codex`、`claude`、`agy` wrapper；
-- 启动工具前执行 `aic sync`；
+- 启动工具前执行 `agentsync sync`；
 - `cdx`、`cld`、`ag` 别名。
 
 ## `uninstall`
 
 ```sh
-aic uninstall
+agentsync uninstall
 ```
 
 要求交互式终端。命令先生成并展示完整计划，确认后严格执行同一份计划，不重新扫描目标。第一次确认删除受管安装对象，第二次确认是否删除 runtime；默认均为否。
@@ -116,23 +115,25 @@ aic uninstall
 ## `version`
 
 ```sh
-aic version
-aic --version
-aic -V
+agentsync version
+agentsync --version
+agentsync -V
 ```
 
 输出格式：
 
 ```text
-ai-instructions 3.1.2
+ai-instructions 3.2.0
 ```
+
+v3.2.x 暂时保留旧输出前缀，以便 v3.1.2 的升级候选校验能够识别新版本。
 
 ## `help`
 
 ```sh
-aic help
-aic --help
-aic -h
+agentsync help
+agentsync --help
+agentsync -h
 ```
 
 ## 环境变量

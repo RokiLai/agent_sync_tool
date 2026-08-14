@@ -9,6 +9,7 @@ import (
 
 	"github.com/RokiLai/agent_sync_tool/internal/config"
 	"github.com/RokiLai/agent_sync_tool/internal/core"
+	"github.com/RokiLai/agent_sync_tool/internal/identity"
 )
 
 type Plan struct {
@@ -22,9 +23,9 @@ func Build(c config.Config, shell string) Plan {
 	for _, path := range []string{filepath.Join(c.CodexHome, "AGENTS.md"), filepath.Join(c.HomeDir, ".claude/CLAUDE.md"), filepath.Join(c.HomeDir, ".gemini/GEMINI.md")} {
 		collectLink(&p, path, runtimeFile)
 	}
-	installed := filepath.Join(c.ConfigDir, "bin/ai-instructions")
-	for _, path := range []string{filepath.Join(c.BinDir, "ai-instructions"), filepath.Join(c.BinDir, "aic")} {
-		collectLink(&p, path, installed)
+	installed := filepath.Join(c.ConfigDir, "bin", identity.ManagedBinaryName)
+	for _, name := range identity.CommandNames() {
+		collectLink(&p, filepath.Join(c.BinDir, name), installed)
 	}
 	for path, marker := range map[string]string{filepath.Join(c.ConfigDir, "repo-path"): config.RepoPathMarker, filepath.Join(c.ConfigDir, "agents-url"): config.AgentsURLMarker, filepath.Join(c.ConfigDir, "shell-integration.sh"): config.ManagedMarker} {
 		if firstLine(path) == marker {
@@ -33,7 +34,7 @@ func Build(c config.Config, shell string) Plan {
 			p.Warnings = append(p.Warnings, "配置不受本工具管理，保留："+path)
 		}
 	}
-	if data, err := os.ReadFile(installed); err == nil && strings.Contains(string(data), "ai-instructions") {
+	if data, err := os.ReadFile(installed); err == nil && strings.Contains(string(data), identity.VersionOutputName) {
 		p.Files = append(p.Files, installed)
 	}
 	rc := core.RCPath(c.HomeDir, shell)

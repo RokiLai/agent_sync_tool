@@ -5,7 +5,7 @@ Agent Sync Tool 将远程规则、版本存储、AI 工具入口和命令行生�
 ## 组件
 
 ```text
-cmd/aic
+cmd/agentsync
   └─ internal/app          命令解析、输出和退出码
       ├─ source            URL 校验与 HTTP 下载
       ├─ runtime           同步、内容版本和 last-known-good
@@ -17,6 +17,7 @@ cmd/aic
       └─ uninstall         卸载计划和执行
 
 internal/core              稳定的共享兼容原语
+internal/identity          主命令、兼容入口和 Release 产物名称
 internal/config            路径和受管配置
 internal/managedfs         原子写入和符号链接
 internal/lock              跨进程同步锁
@@ -114,5 +115,7 @@ SHA1("blob " + 内容字节数 + NUL + 原始内容)
 ## Release 安全
 
 安装和升级针对当前系统选择固定资产名称，下载 `checksums.txt` 后验证 SHA-256。候选二进制通过 `version` 自检后，升级才会在同一目录内使用原子重命名替换当前工具。
+
+v3.2.x 的主资产使用 `agentsync_<OS>_<ARCH>`；同一二进制还以 `aic_<OS>_<ARCH>` 发布一次，使只认识旧资产名的 v3.1.2 能升级。命令名和资产前缀集中在 `internal/identity`，独立安装与发布脚本则在文件顶部声明对应变量。配置目录、环境变量和内部受管二进制名称在此次迁移中保持不变。
 
 升级分为两个阶段：先从 Release 重定向和 checksum 清单识别目标版本，展示当前版本与目标版本并在交互终端请求确认；确认后才流式下载候选二进制。下载过程通过进度事件交给终端展示层，TTY 使用动态单行进度，非交互环境输出稳定日志。候选版本必须与目标 Release 一致，任何下载、checksum、版本或替换失败都不会修改当前工具。

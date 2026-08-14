@@ -11,7 +11,7 @@ import (
 
 func TestArtifactAndURL(t *testing.T) {
 	name, err := Artifact("darwin", "amd64")
-	if err != nil || name != "aic_Darwin_x86_64" {
+	if err != nil || name != "agentsync_Darwin_x86_64" {
 		t.Fatalf("%s %v", name, err)
 	}
 	if _, err := Artifact("windows", "amd64"); err == nil {

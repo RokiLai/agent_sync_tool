@@ -10,6 +10,7 @@ import (
 
 	"github.com/RokiLai/agent_sync_tool/internal/config"
 	"github.com/RokiLai/agent_sync_tool/internal/core"
+	"github.com/RokiLai/agent_sync_tool/internal/identity"
 )
 
 type Dependencies struct {
@@ -114,14 +115,15 @@ func Doctor(out io.Writer, c config.Config, deps Dependencies, shell string) boo
 			warnings++
 		}
 	}
-	installed := filepath.Join(c.ConfigDir, "bin/ai-instructions")
+	installed := filepath.Join(c.ConfigDir, "bin", identity.ManagedBinaryName)
 	if info, err := os.Stat(installed); err == nil && info.Mode()&0111 != 0 {
 		ok(out, "工具本体已安装")
 	} else {
 		fmt.Fprintf(out, "[WARN] 工具本体未安装或不可执行：%s\n", installed)
 		warnings++
 	}
-	for _, link := range []string{filepath.Join(c.BinDir, "ai-instructions"), filepath.Join(c.BinDir, "aic")} {
+	for _, name := range identity.CommandNames() {
+		link := filepath.Join(c.BinDir, name)
 		if symlinkEquals(link, installed) {
 			ok(out, "命令入口正确：%s", link)
 		} else {

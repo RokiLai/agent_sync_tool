@@ -38,7 +38,7 @@ func TestBinaryInstallDryRunAndInstall(t *testing.T) {
 	if err != nil {
 		t.Fatalf("out=%s err=%v", out, err)
 	}
-	for _, path := range []string{filepath.Join(home, "bin/aic"), filepath.Join(home, "codex/AGENTS.md"), filepath.Join(home, "runtime/current"), filepath.Join(home, "config/agents-url")} {
+	for _, path := range []string{filepath.Join(home, "bin/agentsync"), filepath.Join(home, "bin/aic"), filepath.Join(home, "bin/ai-instructions"), filepath.Join(home, "codex/AGENTS.md"), filepath.Join(home, "runtime/current"), filepath.Join(home, "config/agents-url")} {
 		if _, err := os.Lstat(path); err != nil {
 			t.Fatalf("missing %s: %v", path, err)
 		}

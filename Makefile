@@ -1,5 +1,7 @@
 .PHONY: test verify cross-build release
 
+COMMAND := agentsync
+
 test:
 	go test -race -timeout 2m ./...
 
@@ -10,10 +12,10 @@ verify:
 	$(MAKE) cross-build
 
 cross-build:
-	GOOS=darwin GOARCH=amd64 go build -o /tmp/aic-darwin-amd64 ./cmd/aic
-	GOOS=darwin GOARCH=arm64 go build -o /tmp/aic-darwin-arm64 ./cmd/aic
-	GOOS=linux GOARCH=amd64 go build -o /tmp/aic-linux-amd64 ./cmd/aic
-	GOOS=linux GOARCH=arm64 go build -o /tmp/aic-linux-arm64 ./cmd/aic
+	GOOS=darwin GOARCH=amd64 go build -o /tmp/$(COMMAND)-darwin-amd64 ./cmd/$(COMMAND)
+	GOOS=darwin GOARCH=arm64 go build -o /tmp/$(COMMAND)-darwin-arm64 ./cmd/$(COMMAND)
+	GOOS=linux GOARCH=amd64 go build -o /tmp/$(COMMAND)-linux-amd64 ./cmd/$(COMMAND)
+	GOOS=linux GOARCH=arm64 go build -o /tmp/$(COMMAND)-linux-arm64 ./cmd/$(COMMAND)
 
 release:
 	sh scripts/build-release.sh dist

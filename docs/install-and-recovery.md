@@ -106,15 +106,15 @@ sh install.sh https://example.org/path/to/AGENTS.md
 可以先查看计划：
 
 ```sh
-aic install https://example.org/path/to/AGENTS.md --dry-run
+agentsync install https://example.org/path/to/AGENTS.md --dry-run
 ```
 
 ## 安装后检查
 
 ```sh
-aic version
-aic status
-aic doctor
+agentsync version
+agentsync status
+agentsync doctor
 ```
 
 `status` 展示安装模式、规则来源、runtime 版本和工具入口。`doctor` 进一步检查依赖、内容版本一致性、命令入口及 Shell 配置，并在存在关键失败时返回非零状态。
@@ -124,21 +124,21 @@ aic doctor
 手动同步：
 
 ```sh
-aic sync
+agentsync sync
 ```
 
 查看或测试来源：
 
 ```sh
-aic source
-aic source test
-aic source test https://example.org/other/AGENTS.md
+agentsync source
+agentsync source test
+agentsync source test https://example.org/other/AGENTS.md
 ```
 
 交互式更换来源：
 
 ```sh
-aic source set https://example.org/other/AGENTS.md
+agentsync source set https://example.org/other/AGENTS.md
 ```
 
 新来源会在询问确认前完成下载和校验。取消、下载失败或发布失败时，原来源和当前 runtime 保持不变。
@@ -148,13 +148,13 @@ aic source set https://example.org/other/AGENTS.md
 升级到最新正式版本：
 
 ```sh
-aic upgrade
+agentsync upgrade
 ```
 
 固定升级目标：
 
 ```sh
-AIC_VERSION=vX.Y.Z aic upgrade
+AIC_VERSION=vX.Y.Z agentsync upgrade
 ```
 
 升级流程会：
@@ -170,17 +170,29 @@ AIC_VERSION=vX.Y.Z aic upgrade
 
 下载、checksum、候选执行或替换失败时，当前工具保持不变。
 
+### 从 v3.1.2 迁移命令名
+
+v3.1.2 只有 `aic` 入口，可先用旧命令升级，再补建新入口：
+
+```sh
+aic upgrade
+aic install
+agentsync version
+```
+
+第二步会复用已保存的规则来源并创建 `agentsync`。v3.2.x 仍可使用 `aic` 和 `ai-instructions`，但它们仅用于一个版本系列的迁移；完成后请统一使用 `agentsync`。
+
 ## 故障恢复
 
 ### 网络不可用
 
-普通 `aic sync` 下载失败时，如果 runtime 中已有有效规则，会警告并继续使用最后一次成功版本。首次安装或更换来源不会用缓存冒充成功。
+普通 `agentsync sync` 下载失败时，如果 runtime 中已有有效规则，会警告并继续使用最后一次成功版本。首次安装或更换来源不会用缓存冒充成功。
 
 ### 检查当前状态
 
 ```sh
-aic status
-aic doctor
+agentsync status
+agentsync doctor
 ```
 
 runtime 当前内容可以直接读取：
@@ -204,7 +216,7 @@ curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/instal
 ## 卸载
 
 ```sh
-aic uninstall
+agentsync uninstall
 ```
 
 卸载必须在交互式终端运行。工具会先展示固定计划，第一次确认是否删除受管命令、配置、Shell 块和 AI 工具入口，第二次确认是否同时删除规则 runtime。所有确认默认都是“否”。

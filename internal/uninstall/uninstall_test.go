@@ -27,8 +27,10 @@ func TestBuildExecuteImmutablePlan(t *testing.T) {
 	if err := os.WriteFile(installed, []byte("ai-instructions"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(installed, filepath.Join(bin, "aic")); err != nil {
-		t.Fatal(err)
+	for _, name := range []string{"agentsync", "aic", "ai-instructions"} {
+		if err := os.Symlink(installed, filepath.Join(bin, name)); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if err := os.WriteFile(filepath.Join(cfg, "agents-url"), []byte(config.AgentsURLMarker+"\nhttps://x\n"), 0600); err != nil {
 		t.Fatal(err)
@@ -54,7 +56,9 @@ func TestBuildExecuteImmutablePlan(t *testing.T) {
 	if _, err := os.Stat(foreign); err != nil {
 		t.Fatal("later file deleted")
 	}
-	if _, err := os.Lstat(filepath.Join(bin, "aic")); !os.IsNotExist(err) {
-		t.Fatal("aic remains")
+	for _, name := range []string{"agentsync", "aic", "ai-instructions"} {
+		if _, err := os.Lstat(filepath.Join(bin, name)); !os.IsNotExist(err) {
+			t.Fatalf("%s remains", name)
+		}
 	}
 }

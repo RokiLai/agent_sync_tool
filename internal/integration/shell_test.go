@@ -9,7 +9,7 @@ import (
 
 func TestShellInit(t *testing.T) {
 	out := ShellInit(config.Config{Paths: config.Paths{BinDir: "/tmp/bin"}})
-	for _, expected := range []string{config.ManagedMarker, `"/tmp/bin/ai-instructions" sync || return`, "alias cdx=codex", "alias cld=claude", "alias ag=agy"} {
+	for _, expected := range []string{config.ManagedMarker, `"/tmp/bin/agentsync" sync || return`, "alias cdx=codex", "alias cld=claude", "alias ag=agy"} {
 		if !strings.Contains(out, expected) {
 			t.Errorf("missing %q", expected)
 		}

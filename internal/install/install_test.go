@@ -17,7 +17,7 @@ func fixture(t *testing.T) (Installer, Options, config.Config) {
 	if err := os.MkdirAll(filepath.Join(repo, ".git"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	exe := filepath.Join(home, "aic")
+	exe := filepath.Join(home, "agentsync")
 	if err := os.WriteFile(exe, []byte("ai-instructions binary"), 0700); err != nil {
 		t.Fatal(err)
 	}
@@ -50,8 +50,10 @@ func TestPrepareExecuteIdempotent(t *testing.T) {
 	if err := Execute(p, c); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Readlink(filepath.Join(c.BinDir, "aic")); err != nil {
-		t.Fatal(err)
+	for _, name := range []string{"agentsync", "aic", "ai-instructions"} {
+		if _, err := os.Readlink(filepath.Join(c.BinDir, name)); err != nil {
+			t.Fatalf("missing %s: %v", name, err)
+		}
 	}
 	if _, err := os.Readlink(filepath.Join(c.CodexHome, "AGENTS.md")); err != nil {
 		t.Fatal(err)

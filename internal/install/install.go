@@ -10,6 +10,7 @@ import (
 
 	"github.com/RokiLai/agent_sync_tool/internal/config"
 	"github.com/RokiLai/agent_sync_tool/internal/core"
+	"github.com/RokiLai/agent_sync_tool/internal/identity"
 	"github.com/RokiLai/agent_sync_tool/internal/managedfs"
 )
 
@@ -108,14 +109,18 @@ func (i Installer) Prepare(ctx context.Context, o Options) (Plan, error) {
 		return Plan{}, err
 	}
 	c := i.Config
-	installed := filepath.Join(c.ConfigDir, "bin/ai-instructions")
+	installed := filepath.Join(c.ConfigDir, "bin", identity.ManagedBinaryName)
 	runtimeFile := filepath.Join(c.RuntimeDir, "AGENTS.md")
 	p := Plan{Candidate: candidate, URL: o.URL, ShellRC: core.RCPath(c.HomeDir, o.Shell), ShellFile: filepath.Join(c.ConfigDir, "shell-integration.sh")}
 	exe, err := os.ReadFile(o.Executable)
 	if err != nil {
 		return Plan{}, err
 	}
-	p.Operations = append(p.Operations, Operation{"file", installed, "", exe, 0700}, Operation{"link", filepath.Join(c.BinDir, "ai-instructions"), installed, nil, 0}, Operation{"link", filepath.Join(c.BinDir, "aic"), installed, nil, 0}, Operation{"file", filepath.Join(c.ConfigDir, "repo-path"), "", []byte(config.RepoPathMarker + "\n" + c.RepositoryDir + "\n"), 0600}, Operation{"file", filepath.Join(c.ConfigDir, "agents-url"), "", []byte(config.AgentsURLMarker + "\n" + o.URL + "\n"), 0600})
+	p.Operations = append(p.Operations, Operation{"file", installed, "", exe, 0700})
+	for _, name := range identity.CommandNames() {
+		p.Operations = append(p.Operations, Operation{"link", filepath.Join(c.BinDir, name), installed, nil, 0})
+	}
+	p.Operations = append(p.Operations, Operation{"file", filepath.Join(c.ConfigDir, "repo-path"), "", []byte(config.RepoPathMarker + "\n" + c.RepositoryDir + "\n"), 0600}, Operation{"file", filepath.Join(c.ConfigDir, "agents-url"), "", []byte(config.AgentsURLMarker + "\n" + o.URL + "\n"), 0600})
 	for _, tool := range o.Tools {
 		path := map[string]string{"codex": filepath.Join(c.CodexHome, "AGENTS.md"), "claude": filepath.Join(c.HomeDir, ".claude/CLAUDE.md"), "agy": filepath.Join(c.HomeDir, ".gemini/GEMINI.md")}[tool]
 		p.Operations = append(p.Operations, Operation{"link", path, runtimeFile, nil, 0})
@@ -173,8 +178,8 @@ func managedFile(path string, data []byte, c config.Config) bool {
 	if path == filepath.Join(c.ConfigDir, "shell-integration.sh") {
 		return first == config.ManagedMarker
 	}
-	if path == filepath.Join(c.ConfigDir, "bin/ai-instructions") {
-		return strings.Contains(string(data), "ai-instructions")
+	if path == filepath.Join(c.ConfigDir, "bin", identity.ManagedBinaryName) {
+		return strings.Contains(string(data), identity.VersionOutputName)
 	}
 	return false
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/RokiLai/agent_sync_tool/internal/app"
@@ -17,5 +18,6 @@ func main() {
 		Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Executable: executable,
 		IsTerminal:       func() bool { info, err := os.Stdin.Stat(); return err == nil && info.Mode()&os.ModeCharDevice != 0 },
 		IsOutputTerminal: func() bool { info, err := os.Stdout.Stat(); return err == nil && info.Mode()&os.ModeCharDevice != 0 },
+		ProgramName:      filepath.Base(os.Args[0]),
 	}))
 }

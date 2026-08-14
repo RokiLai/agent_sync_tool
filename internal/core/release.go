@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"runtime"
 	"strings"
+
+	"github.com/RokiLai/agent_sync_tool/internal/identity"
 )
 
 const DefaultReleaseBaseURL = "https://github.com/RokiLai/agent_sync_tool/releases"
@@ -21,7 +23,15 @@ func Artifact(goos, goarch string) (string, error) {
 	if osName == "" || arch == "" {
 		return "", fmt.Errorf("不支持的平台：%s/%s", goos, goarch)
 	}
-	return "aic_" + osName + "_" + arch, nil
+	return identity.PrimaryArtifactPrefix + "_" + osName + "_" + arch, nil
+}
+
+func LegacyArtifact(goos, goarch string) (string, error) {
+	name, err := Artifact(goos, goarch)
+	if err != nil {
+		return "", err
+	}
+	return strings.Replace(name, identity.PrimaryArtifactPrefix+"_", identity.LegacyArtifactPrefix+"_", 1), nil
 }
 
 func CurrentArtifact() (string, error) { return Artifact(runtime.GOOS, runtime.GOARCH) }

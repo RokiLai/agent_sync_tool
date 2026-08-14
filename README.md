@@ -2,7 +2,7 @@
 
 Agent Sync Tool 是一个用于集中管理 AI 编程助手规则的命令行工具。它从一个 HTTP(S) 地址获取 `AGENTS.md`，以只读、可回滚的版本保存到本机，并为 Codex、Claude 和 Antigravity 创建统一入口。
 
-命令行名称为 `aic`，同时提供完整名称 `ai-instructions`。
+主命令为 `agentsync`。v3.2.x 同时保留 `aic` 和 `ai-instructions` 兼容入口，后续主版本将移除旧入口。
 
 核心 CLI 完全使用 Go 实现。`install.sh` 只负责首次下载和校验 Release 二进制；生成的 Shell 集成只负责在启动 AI 工具前同步规则，不包含另一套 CLI 实现。
 
@@ -23,12 +23,12 @@ Agent Sync Tool 是一个用于集中管理 AI 编程助手规则的命令行工
 - Linux：arm64、x86_64
 - WSL 2：使用 Linux x86_64 产物
 
-正式 Release 包含：
+正式 Release 以 `agentsync_*` 为主产物。v3.2.x 额外提供内容相同的 `aic_*` 兼容产物，使 v3.1.2 客户端能够完成升级：
 
-- `aic_Darwin_arm64`
-- `aic_Darwin_x86_64`
-- `aic_Linux_arm64`
-- `aic_Linux_x86_64`
+- `agentsync_Darwin_arm64`、`aic_Darwin_arm64`
+- `agentsync_Darwin_x86_64`、`aic_Darwin_x86_64`
+- `agentsync_Linux_arm64`、`aic_Linux_arm64`
+- `agentsync_Linux_x86_64`、`aic_Linux_x86_64`
 - `checksums.txt`
 
 ## 安装
@@ -44,7 +44,7 @@ curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/instal
 
 - 自动识别 Zsh 或 Bash；
 - 为 Codex、Claude、Antigravity 创建规则入口；
-- 将 `aic` 和 `ai-instructions` 放入 `~/.local/bin`；
+- 将 `agentsync` 放入 `~/.local/bin`，并在 v3.2.x 创建 `aic`、`ai-instructions` 兼容入口；
 - 立即下载并部署第一份规则。
 
 如果传入 GitHub 文件页面，例如：
@@ -77,34 +77,34 @@ curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/instal
 ## 快速开始
 
 ```sh
-aic version
-aic status
-aic doctor
-aic sync
+agentsync version
+agentsync status
+agentsync doctor
+agentsync sync
 ```
 
 查看当前规则来源：
 
 ```sh
-aic source
+agentsync source
 ```
 
 验证另一个来源，但不修改配置：
 
 ```sh
-aic source test https://example.org/new/AGENTS.md
+agentsync source test https://example.org/new/AGENTS.md
 ```
 
 交互式切换来源：
 
 ```sh
-aic source set https://example.org/new/AGENTS.md
+agentsync source set https://example.org/new/AGENTS.md
 ```
 
 升级到最新正式版本：
 
 ```sh
-aic upgrade
+agentsync upgrade
 ```
 
 升级会先显示当前版本和最新正式版本。真实终端发现新版本时会请求确认，确认后以动态进度条展示下载、校验和原子安装进度；当前已是最新版本时不会下载完整二进制。输出被重定向或运行在 CI 中时，进度会自动降级为稳定的逐行日志并保持原有的自动升级行为。
@@ -113,7 +113,7 @@ aic upgrade
 
 规则内容按 Git blob SHA-1 生成内容版本，发布到 runtime 的 `versions/<revision>`。`current` 通过原子符号链接切换到有效版本，兼容入口始终指向 `current/AGENTS.md`。
 
-Shell 集成会在启动 Codex、Claude 或 Antigravity 前执行一次 `aic sync`。同步失败且没有有效缓存时，不会继续启动对应工具；已有有效缓存时会显示警告并继续使用最后一次成功版本。
+Shell 集成会在启动 Codex、Claude 或 Antigravity 前执行一次 `agentsync sync`。同步失败且没有有效缓存时，不会继续启动对应工具；已有有效缓存时会显示警告并继续使用最后一次成功版本。
 
 详细设计见 [架构与数据安全](docs/architecture.md)。
 
@@ -122,7 +122,7 @@ Shell 集成会在启动 Codex、Claude 或 Antigravity 前执行一次 `aic syn
 ```text
 ~/.config/ai-instructions/              配置、已安装二进制和 Shell 集成
 ~/.local/share/ai-instructions-runtime/ 规则版本与当前版本链接
-~/.local/bin/                            aic 和 ai-instructions 命令入口
+~/.local/bin/                            agentsync 主入口及 v3.2.x 兼容入口
 ~/.codex/AGENTS.md                       Codex 规则入口
 ~/.claude/CLAUDE.md                      Claude 规则入口
 ~/.gemini/GEMINI.md                      Antigravity 规则入口
@@ -143,7 +143,7 @@ make verify
 构建当前平台二进制：
 
 ```sh
-go build -o aic ./cmd/aic
+go build -o agentsync ./cmd/agentsync
 ```
 
 构建并校验全部 Release 产物：

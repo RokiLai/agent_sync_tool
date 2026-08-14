@@ -60,8 +60,11 @@ func TestNormalizeURLRejectsGuessing(t *testing.T) {
 }
 
 func TestReleaseContracts(t *testing.T) {
-	if got, err := Artifact("linux", "amd64"); err != nil || got != "aic_Linux_x86_64" {
+	if got, err := Artifact("linux", "amd64"); err != nil || got != "agentsync_Linux_x86_64" {
 		t.Fatalf("artifact=%q err=%v", got, err)
+	}
+	if got, err := LegacyArtifact("linux", "amd64"); err != nil || got != "aic_Linux_x86_64" {
+		t.Fatalf("legacy artifact=%q err=%v", got, err)
 	}
 	if _, err := Artifact("windows", "amd64"); err == nil {
 		t.Fatal("unsupported platform accepted")
