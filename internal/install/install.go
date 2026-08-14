@@ -12,6 +12,7 @@ import (
 	"github.com/RokiLai/agent_sync_tool/internal/core"
 	"github.com/RokiLai/agent_sync_tool/internal/identity"
 	"github.com/RokiLai/agent_sync_tool/internal/managedfs"
+	"github.com/RokiLai/agent_sync_tool/internal/probe"
 )
 
 type Options struct {
@@ -34,10 +35,11 @@ type Plan struct {
 type Installer struct {
 	Config   config.Config
 	Download func(context.Context, string) ([]byte, error)
+	LookPath func(string) (string, error)
 }
 
 func Parse(args []string, shellEnv string) (Options, error) {
-	o := Options{Shell: "auto", Tools: []string{"codex", "claude", "agy"}}
+	o := Options{Shell: "auto", Tools: nil}
 	for len(args) > 0 {
 		switch args[0] {
 		case "--shell":
@@ -50,7 +52,11 @@ func Parse(args []string, shellEnv string) (Options, error) {
 			if len(args) < 2 {
 				return o, errors.New("--tools 缺少参数")
 			}
-			o.Tools = strings.Split(args[1], ",")
+			if args[1] == "auto" {
+				o.Tools = []string{"auto"}
+			} else {
+				o.Tools = strings.Split(args[1], ",")
+			}
 			args = args[2:]
 		case "--dry-run":
 			o.DryRun = true
@@ -78,15 +84,19 @@ func Parse(args []string, shellEnv string) (Options, error) {
 	if o.Shell != "zsh" && o.Shell != "bash" && o.Shell != "none" {
 		return o, fmt.Errorf("不支持的 Shell：%s", o.Shell)
 	}
-	seen := map[string]bool{}
-	for _, tool := range o.Tools {
-		if tool != "codex" && tool != "claude" && tool != "agy" {
-			return o, fmt.Errorf("不支持的工具：%s", tool)
+	if len(o.Tools) == 1 && o.Tools[0] == "auto" {
+		// auto 标记在 Prepare 中解析环境
+	} else if len(o.Tools) > 0 {
+		seen := map[string]bool{}
+		for _, tool := range o.Tools {
+			if _, ok := identity.FindTool(tool); !ok {
+				return o, fmt.Errorf("不支持的工具：%s", tool)
+			}
+			seen[tool] = true
 		}
-		seen[tool] = true
-	}
-	if len(seen) != len(o.Tools) {
-		return o, errors.New("工具列表包含重复项")
+		if len(seen) != len(o.Tools) {
+			return o, errors.New("工具列表包含重复项")
+		}
 	}
 	return o, nil
 }
@@ -100,6 +110,17 @@ func (i Installer) Prepare(ctx context.Context, o Options) (Plan, error) {
 		return Plan{}, err
 	}
 	o.URL = normalizedURL
+
+	c := i.Config
+	if len(o.Tools) == 0 || (len(o.Tools) == 1 && o.Tools[0] == "auto") {
+		env := probe.DetectTools(i.LookPath, c.HomeDir, c.CodexHome)
+		if len(env.DetectedKeys) > 0 {
+			o.Tools = env.DetectedKeys
+		} else {
+			o.Tools = identity.DefaultToolKeys()
+		}
+	}
+
 	data, err := i.Download(ctx, o.URL)
 	if err != nil {
 		return Plan{}, errors.New("首次同步失败")
@@ -108,7 +129,7 @@ func (i Installer) Prepare(ctx context.Context, o Options) (Plan, error) {
 	if err != nil {
 		return Plan{}, err
 	}
-	c := i.Config
+
 	installed := filepath.Join(c.ConfigDir, "bin", identity.ManagedBinaryName)
 	runtimeFile := filepath.Join(c.RuntimeDir, "AGENTS.md")
 	p := Plan{Candidate: candidate, URL: o.URL, ShellRC: core.RCPath(c.HomeDir, o.Shell), ShellFile: filepath.Join(c.ConfigDir, "shell-integration.sh")}
@@ -123,13 +144,21 @@ func (i Installer) Prepare(ctx context.Context, o Options) (Plan, error) {
 	for _, name := range []string{identity.LegacyShortCommand, identity.LegacyLongCommand} {
 		p.Operations = append(p.Operations, Operation{"remove-managed-link", filepath.Join(c.BinDir, name), installed, nil, 0})
 	}
-	p.Operations = append(p.Operations, Operation{"file", filepath.Join(c.ConfigDir, "repo-path"), "", []byte(config.RepoPathMarker + "\n" + c.RepositoryDir + "\n"), 0600}, Operation{"file", filepath.Join(c.ConfigDir, "agents-url"), "", []byte(config.AgentsURLMarker + "\n" + o.URL + "\n"), 0600})
-	for _, tool := range o.Tools {
-		path := map[string]string{"codex": filepath.Join(c.CodexHome, "AGENTS.md"), "claude": filepath.Join(c.HomeDir, ".claude/CLAUDE.md"), "agy": filepath.Join(c.HomeDir, ".gemini/GEMINI.md")}[tool]
-		p.Operations = append(p.Operations, Operation{"link", path, runtimeFile, nil, 0})
+	p.Operations = append(p.Operations,
+		Operation{"file", filepath.Join(c.ConfigDir, "repo-path"), "", []byte(config.RepoPathMarker + "\n" + c.RepositoryDir + "\n"), 0600},
+		Operation{"file", filepath.Join(c.ConfigDir, "agents-url"), "", []byte(config.AgentsURLMarker + "\n" + o.URL + "\n"), 0600},
+		Operation{"file", filepath.Join(c.ConfigDir, "enabled-tools"), "", []byte(config.EnabledToolsMarker + "\n" + strings.Join(o.Tools, ",") + "\n"), 0600},
+	)
+	for _, toolKey := range o.Tools {
+		if tool, ok := identity.FindTool(toolKey); ok {
+			path := tool.TargetPath(c.HomeDir, c.CodexHome)
+			p.Operations = append(p.Operations, Operation{"link", path, runtimeFile, nil, 0})
+		}
 	}
 	if o.Shell != "none" {
-		p.Operations = append(p.Operations, Operation{"file", p.ShellFile, "", []byte(core.ShellInit(c)), 0600})
+		shellConfig := c
+		shellConfig.EnabledTools = o.Tools
+		p.Operations = append(p.Operations, Operation{"file", p.ShellFile, "", []byte(core.ShellInit(shellConfig)), 0600})
 	}
 	if err := Preflight(p, c); err != nil {
 		return Plan{}, err
@@ -179,6 +208,9 @@ func managedFile(path string, data []byte, c config.Config) bool {
 	}
 	if path == filepath.Join(c.ConfigDir, "agents-url") {
 		return first == config.AgentsURLMarker
+	}
+	if path == filepath.Join(c.ConfigDir, "enabled-tools") {
+		return first == config.EnabledToolsMarker
 	}
 	if path == filepath.Join(c.ConfigDir, "shell-integration.sh") {
 		return first == config.ManagedMarker

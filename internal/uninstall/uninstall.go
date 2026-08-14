@@ -20,14 +20,20 @@ type Plan struct {
 func Build(c config.Config, shell string) Plan {
 	p := Plan{RuntimeDir: c.RuntimeDir}
 	runtimeFile := filepath.Join(c.RuntimeDir, "AGENTS.md")
-	for _, path := range []string{filepath.Join(c.CodexHome, "AGENTS.md"), filepath.Join(c.HomeDir, ".claude/CLAUDE.md"), filepath.Join(c.HomeDir, ".gemini/GEMINI.md")} {
+	for _, tool := range identity.SupportedTools() {
+		path := tool.TargetPath(c.HomeDir, c.CodexHome)
 		collectLink(&p, path, runtimeFile)
 	}
 	installed := filepath.Join(c.ConfigDir, "bin", identity.ManagedBinaryName)
 	for _, name := range identity.HistoricalCommandNames() {
 		collectLink(&p, filepath.Join(c.BinDir, name), installed)
 	}
-	for path, marker := range map[string]string{filepath.Join(c.ConfigDir, "repo-path"): config.RepoPathMarker, filepath.Join(c.ConfigDir, "agents-url"): config.AgentsURLMarker, filepath.Join(c.ConfigDir, "shell-integration.sh"): config.ManagedMarker} {
+	for path, marker := range map[string]string{
+		filepath.Join(c.ConfigDir, "repo-path"):            config.RepoPathMarker,
+		filepath.Join(c.ConfigDir, "agents-url"):           config.AgentsURLMarker,
+		filepath.Join(c.ConfigDir, "enabled-tools"):        config.EnabledToolsMarker,
+		filepath.Join(c.ConfigDir, "shell-integration.sh"): config.ManagedMarker,
+	} {
 		if firstLine(path) == marker {
 			p.Files = append(p.Files, path)
 		} else if exists(path) {

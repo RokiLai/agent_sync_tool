@@ -1,0 +1,27 @@
+task: probe-and-on-demand-tools
+summary: 统一 AI 工具注册表与全生命周期探测模块，支持按需配置 AI 工具与精准诊断
+allowed_paths:
+  - changes/probe-and-on-demand-tools.yaml
+  - internal/identity/**
+  - internal/probe/**
+  - internal/config/**
+  - internal/install/**
+  - internal/core/**
+  - internal/diagnose/**
+  - internal/uninstall/**
+  - internal/integration/**
+  - internal/app/**
+  - test/**
+constraints:
+  - 建立统一的 ToolRegistry，消除分散的工具硬编码
+  - 新增 internal/probe 探测模块（AI 客户端、Shell、运行模式）
+  - install 支持按需自动探测与显式 --tools 配置，写入 enabled-tools
+  - shell-init 仅为 enabled-tools 中启用的 AI 生成 wrapper
+  - doctor 消除未安装 AI 工具的误报，未启用显示为 INFO
+  - 保持 100% 向后兼容历史无 enabled-tools 的已有环境
+  - 不引入任何第三方外部依赖
+verification:
+  - 工具探测与 Shell 探测单元测试
+  - install / shell-init / doctor / uninstall 各模块单元测试
+  - 自动探测与按需配置端到端集成测试
+  - make verify 质量门禁全量通过（vet, race, cross-build）

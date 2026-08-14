@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/RokiLai/agent_sync_tool/internal/config"
 	"github.com/RokiLai/agent_sync_tool/internal/identity"
@@ -10,30 +11,44 @@ import (
 
 func ShellInit(c config.Config) string {
 	launcher := filepath.Join(c.BinDir, identity.PrimaryCommand)
-	return fmt.Sprintf(`%s
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf(`%s
 case ":$PATH:" in
     *":%s:"*) ;;
     *) PATH="%s:$PATH" ;;
 esac
 export PATH
+`, config.ManagedMarker, c.BinDir, c.BinDir))
 
-codex() {
+	enabledMap := map[string]bool{}
+	for _, k := range c.EnabledTools {
+		enabledMap[k] = true
+	}
+	if len(enabledMap) == 0 {
+		for _, t := range identity.SupportedTools() {
+			enabledMap[t.Key] = true
+		}
+	}
+
+	var aliases []string
+	for _, tool := range identity.SupportedTools() {
+		if !enabledMap[tool.Key] {
+			continue
+		}
+		sb.WriteString(fmt.Sprintf(`
+%s() {
     "%s" sync --auto || return
-    command codex "$@"
+    command %s "$@"
 }
+`, tool.BinaryName, launcher, tool.BinaryName))
+		if tool.Alias != "" {
+			aliases = append(aliases, fmt.Sprintf("alias %s=%s", tool.Alias, tool.BinaryName))
+		}
+	}
 
-claude() {
-    "%s" sync --auto || return
-    command claude "$@"
-}
+	if len(aliases) > 0 {
+		sb.WriteString("\n" + strings.Join(aliases, "\n") + "\n")
+	}
 
-agy() {
-    "%s" sync --auto || return
-    command agy "$@"
-}
-
-alias cdx=codex
-alias cld=claude
-alias ag=agy
-`, config.ManagedMarker, c.BinDir, c.BinDir, launcher, launcher, launcher)
+	return sb.String()
 }

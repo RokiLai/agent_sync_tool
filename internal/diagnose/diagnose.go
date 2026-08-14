@@ -53,9 +53,24 @@ func Status(out io.Writer, c config.Config, deps Dependencies) {
 	} else {
 		fmt.Fprintf(out, "[FAIL] runtime 不完整：%s\n", c.RuntimeDir)
 	}
-	entryStatus(out, "Codex", filepath.Join(c.CodexHome, "AGENTS.md"), filepath.Join(c.RuntimeDir, "AGENTS.md"))
-	entryStatus(out, "Claude", filepath.Join(c.HomeDir, ".claude/CLAUDE.md"), filepath.Join(c.RuntimeDir, "AGENTS.md"))
-	entryStatus(out, "Antigravity", filepath.Join(c.HomeDir, ".gemini/GEMINI.md"), filepath.Join(c.RuntimeDir, "AGENTS.md"))
+
+	runtimeFile := filepath.Join(c.RuntimeDir, "AGENTS.md")
+	enabledMap := map[string]bool{}
+	for _, k := range c.EnabledTools {
+		enabledMap[k] = true
+	}
+	for _, tool := range identity.SupportedTools() {
+		targetPath := tool.TargetPath(c.HomeDir, c.CodexHome)
+		if enabledMap[tool.Key] {
+			entryStatus(out, tool.DisplayName, targetPath, runtimeFile)
+		} else {
+			if symlinkEquals(targetPath, runtimeFile) {
+				entryStatus(out, tool.DisplayName, targetPath, runtimeFile)
+			} else {
+				fmt.Fprintf(out, "[INFO] %s 入口未安装：%s\n", tool.DisplayName, targetPath)
+			}
+		}
+	}
 }
 
 func Doctor(out io.Writer, c config.Config, deps Dependencies, shell string) bool {
@@ -106,15 +121,24 @@ func Doctor(out io.Writer, c config.Config, deps Dependencies, shell string) boo
 		fmt.Fprintln(out, "[WARN] Codex 存在非空 AGENTS.override.md，可能覆盖共享规则")
 		warnings++
 	}
+
 	runtimeFile := filepath.Join(c.RuntimeDir, "AGENTS.md")
-	for _, entry := range []struct{ name, path string }{{"Codex", filepath.Join(c.CodexHome, "AGENTS.md")}, {"Claude", filepath.Join(c.HomeDir, ".claude/CLAUDE.md")}, {"Antigravity", filepath.Join(c.HomeDir, ".gemini/GEMINI.md")}} {
-		if symlinkEquals(entry.path, runtimeFile) {
-			ok(out, "%s 入口正确", entry.name)
-		} else {
-			fmt.Fprintf(out, "[WARN] %s 入口未受管或不正确：%s\n", entry.name, entry.path)
-			warnings++
+	enabledMap := map[string]bool{}
+	for _, k := range c.EnabledTools {
+		enabledMap[k] = true
+	}
+	for _, tool := range identity.SupportedTools() {
+		targetPath := tool.TargetPath(c.HomeDir, c.CodexHome)
+		if enabledMap[tool.Key] {
+			if symlinkEquals(targetPath, runtimeFile) {
+				ok(out, "%s 入口正确", tool.DisplayName)
+			} else {
+				fmt.Fprintf(out, "[WARN] %s 入口未受管或不正确：%s\n", tool.DisplayName, targetPath)
+				warnings++
+			}
 		}
 	}
+
 	installed := filepath.Join(c.ConfigDir, "bin", identity.ManagedBinaryName)
 	if info, err := os.Stat(installed); err == nil && info.Mode()&0111 != 0 {
 		ok(out, "工具本体已安装")
@@ -151,14 +175,18 @@ func Doctor(out io.Writer, c config.Config, deps Dependencies, shell string) boo
 		fmt.Fprintln(out, "[WARN] 当前 Shell 未加载受管配置块")
 		warnings++
 	}
-	for _, command := range []string{"codex", "claude", "agy"} {
-		if _, err := deps.LookPath(command); err == nil {
-			ok(out, "%s 可执行程序可用", command)
-		} else {
-			fmt.Fprintf(out, "[WARN] 未找到 %s 可执行程序\n", command)
-			warnings++
+
+	for _, tool := range identity.SupportedTools() {
+		if enabledMap[tool.Key] {
+			if _, err := deps.LookPath(tool.BinaryName); err == nil {
+				ok(out, "%s 可执行程序可用", tool.BinaryName)
+			} else {
+				fmt.Fprintf(out, "[WARN] 未找到 %s 可执行程序\n", tool.BinaryName)
+				warnings++
+			}
 		}
 	}
+
 	info(out, "检查完成：%d 个失败，%d 个警告", failures, warnings)
 	return failures == 0
 }

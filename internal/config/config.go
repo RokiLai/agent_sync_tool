@@ -5,14 +5,17 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/RokiLai/agent_sync_tool/internal/identity"
 )
 
 const (
-	ManagedMarker   = "# ai-instructions managed file v1"
-	RepoPathMarker  = "# ai-instructions repository path v1"
-	AgentsURLMarker = "# ai-instructions AGENTS URL v1"
-	BlockBegin      = "# >>> ai-instructions managed block >>>"
-	BlockEnd        = "# <<< ai-instructions managed block <<<"
+	ManagedMarker      = "# ai-instructions managed file v1"
+	RepoPathMarker     = "# ai-instructions repository path v1"
+	AgentsURLMarker    = "# ai-instructions AGENTS URL v1"
+	EnabledToolsMarker = "# ai-instructions enabled tools v1"
+	BlockBegin         = "# >>> ai-instructions managed block >>>"
+	BlockEnd           = "# <<< ai-instructions managed block <<<"
 )
 
 type Paths struct {
@@ -22,6 +25,7 @@ type Paths struct {
 type Config struct {
 	Paths
 	RepositorySource string
+	EnabledTools     []string
 }
 
 type LookupEnv func(string) (string, bool)
@@ -65,7 +69,38 @@ func Load(lookup LookupEnv, executable, command string) (Config, error) {
 			c.RepositoryDir = resolved
 		}
 	}
+
+	// 加载 EnabledTools
+	if raw, err := ReadManagedValue(filepath.Join(c.ConfigDir, "enabled-tools"), EnabledToolsMarker); err == nil && raw != "" {
+		var tools []string
+		for _, part := range strings.Split(raw, ",") {
+			part = strings.TrimSpace(part)
+			if part != "" {
+				tools = append(tools, part)
+			}
+		}
+		c.EnabledTools = tools
+	} else {
+		// 尝试向下兼容探测已有受管符号链接
+		c.EnabledTools = detectHistoricalTools(c)
+		if len(c.EnabledTools) == 0 {
+			c.EnabledTools = identity.DefaultToolKeys()
+		}
+	}
+
 	return c, nil
+}
+
+func detectHistoricalTools(c Config) []string {
+	runtimeFile := filepath.Join(c.RuntimeDir, "AGENTS.md")
+	var enabled []string
+	for _, tool := range identity.SupportedTools() {
+		targetPath := tool.TargetPath(c.HomeDir, c.CodexHome)
+		if got, err := os.Readlink(targetPath); err == nil && (got == runtimeFile || strings.HasSuffix(got, "AGENTS.md")) {
+			enabled = append(enabled, tool.Key)
+		}
+	}
+	return enabled
 }
 
 func valueOr(lookup LookupEnv, key, fallback string) string {

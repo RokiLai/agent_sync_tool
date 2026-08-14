@@ -28,6 +28,10 @@ func testDeps(t *testing.T) (Dependencies, *bytes.Buffer, *bytes.Buffer, string)
 }
 
 func TestUpgradeChecksConfirmsAndRendersProgress(t *testing.T) {
+	origVersion := Version
+	Version = "3.2.2"
+	defer func() { Version = origVersion }()
+
 	deps, stdout, stderr, home := testDeps(t)
 	installed := filepath.Join(home, "config/bin/ai-instructions")
 	if err := os.MkdirAll(filepath.Dir(installed), 0755); err != nil {
@@ -86,6 +90,10 @@ func TestUpgradeChecksConfirmsAndRendersProgress(t *testing.T) {
 }
 
 func TestUpgradeCancelDoesNotDownloadArtifact(t *testing.T) {
+	origVersion := Version
+	Version = "3.2.2"
+	defer func() { Version = origVersion }()
+
 	deps, stdout, stderr, home := testDeps(t)
 	installed := filepath.Join(home, "config/bin/ai-instructions")
 	if err := os.MkdirAll(filepath.Dir(installed), 0755); err != nil {
@@ -123,6 +131,10 @@ func TestUpgradeCancelDoesNotDownloadArtifact(t *testing.T) {
 }
 
 func TestUpgradeCurrentVersionSkipsArtifact(t *testing.T) {
+	origVersion := Version
+	Version = "3.2.2"
+	defer func() { Version = origVersion }()
+
 	deps, stdout, stderr, home := testDeps(t)
 	installed := filepath.Join(home, "config/bin/ai-instructions")
 	if err := os.MkdirAll(filepath.Dir(installed), 0755); err != nil {
@@ -146,7 +158,7 @@ func TestUpgradeCurrentVersionSkipsArtifact(t *testing.T) {
 		case "AIC_RELEASE_BASE_URL":
 			return server.URL, true
 		case "AIC_VERSION":
-			return "v3.2.2", true
+			return "v" + Version, true
 		}
 		return oldLookup(key)
 	}
@@ -160,7 +172,7 @@ func TestHelpAndVersion(t *testing.T) {
 	for _, test := range []struct {
 		args     []string
 		expected string
-	}{{nil, "用法：agentsync"}, {[]string{"--version"}, "ai-instructions 3.2.2\n"}, {[]string{"-V"}, "ai-instructions 3.2.2\n"}} {
+	}{{nil, "用法：agentsync"}, {[]string{"--version"}, "ai-instructions " + Version + "\n"}, {[]string{"-V"}, "ai-instructions " + Version + "\n"}} {
 		deps, stdout, _, _ := testDeps(t)
 		if code := Main(context.Background(), test.args, deps); code != 0 || !strings.Contains(stdout.String(), test.expected) {
 			t.Fatalf("args=%v code=%d output=%q", test.args, code, stdout.String())

@@ -16,7 +16,7 @@ import (
 )
 
 func TestBinaryGoToGoUpgradeAndRollback(t *testing.T) {
-	binary := buildAIC(t)
+	binary := buildAICVersion(t, "3.2.2")
 	candidateBinary := buildAICVersion(t, "3.3.0")
 	home := t.TempDir()
 	configDir := filepath.Join(home, "config/bin")

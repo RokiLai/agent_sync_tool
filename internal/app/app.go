@@ -27,7 +27,7 @@ import (
 	"github.com/RokiLai/agent_sync_tool/internal/upgrade"
 )
 
-var Version = "3.2.2"
+var Version = "3.3.0"
 
 type Dependencies struct {
 	Stdin            io.Reader
@@ -102,9 +102,13 @@ func Main(ctx context.Context, args []string, deps Dependencies) int {
 				options.URL = raw
 			}
 		}
-		installer := install.Installer{Config: c, Download: func(ctx context.Context, raw string) ([]byte, error) {
-			return source.Download(ctx, deps.HTTPClient, raw)
-		}}
+		installer := install.Installer{
+			Config: c,
+			Download: func(ctx context.Context, raw string) ([]byte, error) {
+				return source.Download(ctx, deps.HTTPClient, raw)
+			},
+			LookPath: deps.Diagnose.LookPath,
+		}
 		plan, err := installer.Prepare(ctx, options)
 		if err != nil {
 			return fail(deps.Stderr, fmt.Sprintf("安装预检失败：%v；未修改任何文件", err))
