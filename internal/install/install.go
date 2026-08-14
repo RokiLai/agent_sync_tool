@@ -183,7 +183,7 @@ func Preflight(p Plan, c config.Config) error {
 				return fmt.Errorf("路径已存在且不是受管符号链接：%s", op.Path)
 			}
 			target, _ := os.Readlink(op.Path)
-			if target != op.Target {
+			if target != op.Target && !isManagedSymlinkTarget(op.Path, target, c) {
 				return fmt.Errorf("符号链接已指向其他位置：%s", op.Path)
 			}
 		case "file":
@@ -200,6 +200,31 @@ func Preflight(p Plan, c config.Config) error {
 		return err
 	}
 	return preflightRuntime(c.RuntimeDir)
+}
+func isManagedSymlinkTarget(path, target string, c config.Config) bool {
+	for _, name := range identity.HistoricalCommandNames() {
+		if path == filepath.Join(c.BinDir, name) {
+			if target == filepath.Join(c.ConfigDir, "bin", identity.ManagedBinaryName) ||
+				target == filepath.Join(c.HomeDir, ".config/agentsync/bin/agentsync") ||
+				target == filepath.Join(c.HomeDir, ".config/ai-instructions/bin/ai-instructions") ||
+				target == filepath.Join(c.HomeDir, ".config/ai-instructions/bin/agentsync") {
+				return true
+			}
+			if data, err := os.ReadFile(target); err == nil && (strings.Contains(string(data), "agentsync") || strings.Contains(string(data), "ai-instructions")) {
+				return true
+			}
+		}
+	}
+	for _, tool := range identity.SupportedTools() {
+		if path == tool.TargetPath(c.HomeDir, c.CodexHome) {
+			if target == filepath.Join(c.RuntimeDir, "AGENTS.md") ||
+				target == filepath.Join(c.HomeDir, ".local/share/agentsync-runtime/AGENTS.md") ||
+				target == filepath.Join(c.HomeDir, ".local/share/ai-instructions-runtime/AGENTS.md") {
+				return true
+			}
+		}
+	}
+	return false
 }
 func managedFile(path string, data []byte, c config.Config) bool {
 	first := strings.SplitN(string(data), "\n", 2)[0]
@@ -270,7 +295,7 @@ func Execute(p Plan, c config.Config) error {
 			if err := os.MkdirAll(filepath.Dir(op.Path), 0755); err != nil {
 				return err
 			}
-			if err := managedfs.EnsureSymlink(op.Path, op.Target); err != nil {
+			if err := managedfs.AtomicSymlink(op.Path, op.Target); err != nil {
 				return err
 			}
 		case "remove-managed-link":
