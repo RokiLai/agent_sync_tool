@@ -2,10 +2,12 @@ package install
 
 import (
 	"context"
-	"github.com/RokiLai/agent_sync_tool/internal/config"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/RokiLai/agent_sync_tool/internal/config"
 )
 
 func fixture(t *testing.T) (Installer, Options, config.Config) {
@@ -93,4 +95,31 @@ func TestPrepareAcceptsReleaseModeAndRejectsIncompleteRuntime(t *testing.T) {
 	if _, err := i.Prepare(context.Background(), o); err == nil {
 		t.Fatal("incomplete runtime accepted")
 	}
+}
+
+func TestPrepareNormalizesGitHubBlobURL(t *testing.T) {
+	i, o, c := fixture(t)
+	o.URL = "https://github.com/RokiLai/agents/blob/main/AGENTS.md"
+	var downloaded string
+	i.Download = func(_ context.Context, raw string) ([]byte, error) {
+		downloaded = raw
+		return []byte("rules\n"), nil
+	}
+	plan, err := i.Prepare(context.Background(), o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "https://raw.githubusercontent.com/RokiLai/agents/main/AGENTS.md"
+	if downloaded != want || plan.URL != want {
+		t.Fatalf("downloaded=%q plan.URL=%q", downloaded, plan.URL)
+	}
+	for _, op := range plan.Operations {
+		if op.Path == filepath.Join(c.ConfigDir, "agents-url") {
+			if !strings.Contains(string(op.Data), "\n"+want+"\n") {
+				t.Fatalf("agents-url=%q", op.Data)
+			}
+			return
+		}
+	}
+	t.Fatal("agents-url operation missing")
 }

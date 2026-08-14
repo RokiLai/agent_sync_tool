@@ -94,6 +94,11 @@ func (i Installer) Prepare(ctx context.Context, o Options) (Plan, error) {
 	if o.URL == "" {
 		return Plan{}, errors.New("非交互环境必须在安装命令后提供 AGENTS.md 链接")
 	}
+	normalizedURL, _, err := core.NormalizeURL(o.URL)
+	if err != nil {
+		return Plan{}, err
+	}
+	o.URL = normalizedURL
 	data, err := i.Download(ctx, o.URL)
 	if err != nil {
 		return Plan{}, errors.New("首次同步失败")

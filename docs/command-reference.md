@@ -20,6 +20,8 @@ aic install URL [--shell auto|zsh|bash|none] [--tools LIST] [--dry-run]
 
 安装会部署规则、安装工具本体、创建命令入口和选定的 AI 工具规则入口。
 
+GitHub `blob/main`、`blob/master` 和 `blob/<40位提交SHA>` 文件页会自动转换为 raw 地址。转换后的地址用于下载并写入配置。其他 ref 不自动猜测；返回 `text/html` 的地址会被拒绝。
+
 ## `sync`
 
 ```sh
@@ -53,6 +55,8 @@ aic source set URL
 ```
 
 `source set` 要求真实终端。新 URL 与当前来源相同时直接成功；否则先下载和校验候选，再显示新旧来源并询问确认。只有 `y` 或 `Y` 会执行切换。
+
+`source test` 和 `source set` 检测到可转换的 GitHub 文件页时，会显示规范化后的 raw URL；`source set` 确认后保存该 raw URL。
 
 ## `upgrade`
 
@@ -118,7 +122,7 @@ aic -V
 输出格式：
 
 ```text
-ai-instructions 3.0.1
+ai-instructions 3.1.0
 ```
 
 ## `help`

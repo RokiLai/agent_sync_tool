@@ -1,6 +1,6 @@
 #!/bin/sh
 set -eu
-output=${1:-dist}; version=${AIC_BUILD_VERSION:-3.0.1}
+output=${1:-dist}; version=${AIC_BUILD_VERSION:-3.1.0}
 case "$version" in [vV]*) version=${version#?} ;; esac
 [ -n "$version" ] || { printf '版本号不能为空\n' >&2; exit 2; }
 mkdir -p "$output"

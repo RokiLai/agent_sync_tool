@@ -23,7 +23,7 @@ import (
 	"github.com/RokiLai/agent_sync_tool/internal/upgrade"
 )
 
-var Version = "3.0.1"
+var Version = "3.1.0"
 
 type Dependencies struct {
 	Stdin          io.Reader
@@ -97,7 +97,10 @@ func Main(ctx context.Context, args []string, deps Dependencies) int {
 		if err != nil {
 			return fail(deps.Stderr, fmt.Sprintf("安装预检失败：%v；未修改任何文件", err))
 		}
-		fmt.Fprintf(deps.Stdout, "[INFO] 工具仓库：%s\n[INFO] AGENTS.md 来源：%s\n[INFO] runtime：%s\n[INFO] Shell：%s\n", c.RepositoryDir, options.URL, c.RuntimeDir, options.Shell)
+		if plan.URL != options.URL {
+			githubURLNotice(deps.Stdout, plan.URL)
+		}
+		fmt.Fprintf(deps.Stdout, "[INFO] 工具仓库：%s\n[INFO] AGENTS.md 来源：%s\n[INFO] runtime：%s\n[INFO] Shell：%s\n", c.RepositoryDir, plan.URL, c.RuntimeDir, options.Shell)
 		if options.DryRun {
 			fmt.Fprintln(deps.Stdout, "[INFO] 当前为 dry-run，不会修改文件")
 			fmt.Fprintln(deps.Stdout, "[INFO] dry-run 完成")
@@ -227,8 +230,13 @@ func sourceCommand(ctx context.Context, args []string, c config.Config, deps Dep
 				return fail(deps.Stderr, "未配置有效的 AGENTS.md 来源")
 			}
 		}
-		if err := source.ValidateURL(raw); err != nil {
+		normalized, changed, err := source.NormalizeURL(raw)
+		if err != nil {
 			return fail(deps.Stderr, err.Error())
+		}
+		raw = normalized
+		if changed {
+			githubURLNotice(deps.Stdout, raw)
 		}
 		fmt.Fprintf(deps.Stdout, "正在检查：\n%s\n", raw)
 		data, err := source.Download(ctx, deps.HTTPClient, raw)
@@ -241,8 +249,8 @@ func sourceCommand(ctx context.Context, args []string, c config.Config, deps Dep
 		if len(args) != 1 {
 			return fail(deps.Stderr, "用法：aic source set <URL>")
 		}
-		newURL := args[0]
-		if err := source.ValidateURL(newURL); err != nil {
+		newURL, changed, err := source.NormalizeURL(args[0])
+		if err != nil {
 			return fail(deps.Stderr, err.Error())
 		}
 		oldURL, err := diagnose.ReadAgentsURL(c)
@@ -255,6 +263,9 @@ func sourceCommand(ctx context.Context, args []string, c config.Config, deps Dep
 		}
 		if !deps.IsTerminal() {
 			return fail(deps.Stderr, "source set requires an interactive terminal.")
+		}
+		if changed {
+			githubURLNotice(deps.Stdout, newURL)
 		}
 		fmt.Fprintf(deps.Stdout, "当前来源：\n%s\n新来源：\n%s\n正在验证新来源...\n", oldURL, newURL)
 		data, err := source.Download(ctx, deps.HTTPClient, newURL)
@@ -320,7 +331,10 @@ func commitSource(ctx context.Context, c config.Config, rawURL string, candidate
 }
 
 func fail(w io.Writer, message string) int { fmt.Fprintf(w, "错误：%s\n", message); return 1 }
-func yes(value string) bool                { value = strings.TrimSpace(value); return value == "y" || value == "Y" }
+func githubURLNotice(w io.Writer, normalized string) {
+	fmt.Fprintf(w, "[INFO] 检测到 GitHub 文件页面，已转换为原始文件地址：\n%s\n", normalized)
+}
+func yes(value string) bool { value = strings.TrimSpace(value); return value == "y" || value == "Y" }
 
 const Usage = `用法：aic <命令> [选项]
 完整命令名：ai-instructions

@@ -45,6 +45,14 @@ curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/instal
 - 将 `aic` 和 `ai-instructions` 放入 `~/.local/bin`；
 - 立即下载并部署第一份规则。
 
+如果传入 GitHub 文件页面，例如：
+
+```text
+https://github.com/OWNER/REPOSITORY/blob/main/AGENTS.md
+```
+
+工具会自动转换为 `raw.githubusercontent.com` 原始文件地址并保存。为避免猜错复杂分支名，自动转换仅支持 `main`、`master` 或完整 40 位提交 SHA；其他分支请直接提供 raw URL。返回 HTML 的下载地址会被拒绝。
+
 只配置 Codex 且不修改 Shell 启动文件：
 
 ```sh
@@ -53,11 +61,11 @@ curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/instal
       --tools codex --shell none
 ```
 
-固定安装 v3.0.1：
+固定安装 v3.1.0：
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/install.sh \
-  | AIC_VERSION=v3.0.1 sh -s -- https://example.org/path/to/AGENTS.md
+  | AIC_VERSION=v3.1.0 sh -s -- https://example.org/path/to/AGENTS.md
 ```
 
 完整安装和恢复说明见 [安装、升级与恢复](docs/install-and-recovery.md)。

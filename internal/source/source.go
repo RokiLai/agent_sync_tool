@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/RokiLai/agent_sync_tool/internal/core"
@@ -14,6 +16,8 @@ import (
 func ValidateURL(raw string) error {
 	return core.ValidateURL(raw)
 }
+
+func NormalizeURL(raw string) (string, bool, error) { return core.NormalizeURL(raw) }
 
 func NewHTTPClient() *http.Client {
 	return &http.Client{
@@ -25,10 +29,11 @@ func NewHTTPClient() *http.Client {
 }
 
 func Download(ctx context.Context, client *http.Client, raw string) ([]byte, error) {
-	if err := ValidateURL(raw); err != nil {
+	normalized, _, err := NormalizeURL(raw)
+	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, raw, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, normalized, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -39,6 +44,11 @@ func Download(ctx context.Context, client *http.Client, raw string) ([]byte, err
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("HTTP 状态：%s", resp.Status)
+	}
+	contentType := resp.Header.Get("Content-Type")
+	mediaType, _, parseErr := mime.ParseMediaType(contentType)
+	if (parseErr == nil && strings.EqualFold(mediaType, "text/html")) || strings.HasPrefix(strings.ToLower(contentType), "text/html;") {
+		return nil, errors.New("下载地址返回 HTML 页面，请使用原始 AGENTS.md 文件地址")
 	}
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {

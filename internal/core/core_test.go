@@ -28,6 +28,37 @@ func TestURLAndRevisionContracts(t *testing.T) {
 	}
 }
 
+func TestNormalizeGitHubBlobURL(t *testing.T) {
+	raw := "https://github.com/RokiLai/agents/blob/main/rules/AGENTS.md?plain=1#top"
+	got, changed, err := NormalizeURL(raw)
+	if err != nil || !changed || got != "https://raw.githubusercontent.com/RokiLai/agents/main/rules/AGENTS.md" {
+		t.Fatalf("got=%q changed=%v err=%v", got, changed, err)
+	}
+	sha := strings.Repeat("a", 40)
+	got, changed, err = NormalizeURL("https://github.com/o/r/blob/" + sha + "/AGENTS.md")
+	if err != nil || !changed || got != "https://raw.githubusercontent.com/o/r/"+sha+"/AGENTS.md" {
+		t.Fatalf("got=%q changed=%v err=%v", got, changed, err)
+	}
+}
+
+func TestNormalizeURLRejectsGuessing(t *testing.T) {
+	for _, raw := range []string{
+		"https://github.com/o/r/blob/feature/rules/AGENTS.md",
+		"https://github.com:443/o/r/blob/main/AGENTS.md",
+		"https://user@github.com/o/r/blob/main/AGENTS.md",
+		"https://github.example.com/o/r/blob/main/AGENTS.md",
+		"https://github.com/o/r/tree/main/AGENTS.md",
+	} {
+		got, changed, err := NormalizeURL(raw)
+		if err != nil || changed || got != raw {
+			t.Fatalf("raw=%q got=%q changed=%v err=%v", raw, got, changed, err)
+		}
+	}
+	if _, _, err := NormalizeURL("file:///tmp/AGENTS.md"); err == nil {
+		t.Fatal("invalid URL accepted")
+	}
+}
+
 func TestReleaseContracts(t *testing.T) {
 	if got, err := Artifact("linux", "amd64"); err != nil || got != "aic_Linux_x86_64" {
 		t.Fatalf("artifact=%q err=%v", got, err)

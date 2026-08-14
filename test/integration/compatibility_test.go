@@ -126,7 +126,7 @@ func TestReadOnlyCommandDifferential(t *testing.T) {
 			}
 			continue
 		}
-		if string(goOut) != "ai-instructions 3.0.1\n" || string(shellOut) != "ai-instructions 2.0.0\n" {
+		if string(goOut) != "ai-instructions 3.1.0\n" || string(shellOut) != "ai-instructions 2.0.0\n" {
 			t.Fatalf("args=%v go=%q shell=%q", args, goOut, shellOut)
 		}
 	}
@@ -163,7 +163,7 @@ func TestShellInstallThenGoCandidateReplacement(t *testing.T) {
 	cmd := exec.Command(installed, "version")
 	cmd.Env = env
 	out, err := cmd.Output()
-	if err != nil || string(out) != "ai-instructions 3.0.1\n" {
+	if err != nil || string(out) != "ai-instructions 3.1.0\n" {
 		t.Fatalf("installed=%q err=%v", out, err)
 	}
 	status := exec.Command(installed, "status")

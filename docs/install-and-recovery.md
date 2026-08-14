@@ -18,6 +18,17 @@ curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/instal
 
 示例 URL 必须替换为实际规则文件地址。重定向后的最终地址也必须使用 HTTP(S)。
 
+GitHub 文件页可以直接作为输入：
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/install.sh \
+  | sh -s -- https://github.com/OWNER/REPOSITORY/blob/main/AGENTS.md
+```
+
+工具会显示提示，将明确的 `blob/main`、`blob/master` 或 `blob/<40位提交SHA>` 地址转换为 `raw.githubusercontent.com`，并把转换后的地址保存为规则来源。其他分支名可能包含 `/`，工具不会猜测其边界，请从 GitHub 的 Raw 按钮复制原始文件地址。
+
+下载响应为 `text/html` 时安装会失败，避免把网页内容当作 AI 规则部署。
+
 默认选项相当于：
 
 ```text
@@ -69,14 +80,14 @@ curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/instal
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/install.sh \
-  | AIC_VERSION=v3.0.1 sh -s -- https://example.org/path/to/AGENTS.md
+  | AIC_VERSION=v3.1.0 sh -s -- https://example.org/path/to/AGENTS.md
 ```
 
 私有镜像或测试环境可以覆盖 Release 根地址：
 
 ```sh
 AIC_RELEASE_BASE_URL=https://downloads.example.org/agent-sync/releases \
-AIC_VERSION=v3.0.1 \
+AIC_VERSION=v3.1.0 \
 sh install.sh https://example.org/path/to/AGENTS.md
 ```
 
@@ -141,7 +152,7 @@ aic upgrade
 固定升级目标：
 
 ```sh
-AIC_VERSION=v3.0.1 aic upgrade
+AIC_VERSION=v3.1.0 aic upgrade
 ```
 
 升级流程会：

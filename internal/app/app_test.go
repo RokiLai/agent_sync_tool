@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -26,7 +27,7 @@ func TestHelpAndVersion(t *testing.T) {
 	for _, test := range []struct {
 		args     []string
 		expected string
-	}{{nil, "用法：aic"}, {[]string{"--version"}, "ai-instructions 3.0.1\n"}, {[]string{"-V"}, "ai-instructions 3.0.1\n"}} {
+	}{{nil, "用法：aic"}, {[]string{"--version"}, "ai-instructions 3.1.0\n"}, {[]string{"-V"}, "ai-instructions 3.1.0\n"}} {
 		deps, stdout, _, _ := testDeps(t)
 		if code := Main(context.Background(), test.args, deps); code != 0 || !strings.Contains(stdout.String(), test.expected) {
 			t.Fatalf("args=%v code=%d output=%q", test.args, code, stdout.String())
@@ -61,6 +62,23 @@ func TestSourceShowAndTest(t *testing.T) {
 	stderr.Reset()
 	if code := Main(context.Background(), []string{"source", "test"}, deps); code != 0 || !strings.Contains(stdout.String(), "内容版本：") {
 		t.Fatalf("test code=%d out=%q err=%q", code, stdout.String(), stderr.String())
+	}
+}
+
+func TestSourceTestNormalizesGitHubBlobURL(t *testing.T) {
+	deps, stdout, stderr, _ := testDeps(t)
+	var requested string
+	deps.HTTPClient = &http.Client{Transport: appRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		requested = req.URL.String()
+		return &http.Response{StatusCode: http.StatusOK, Status: "200 OK", Header: http.Header{"Content-Type": []string{"text/plain"}}, Body: io.NopCloser(strings.NewReader("rules\n"))}, nil
+	})}
+	input := "https://github.com/RokiLai/agents/blob/main/AGENTS.md"
+	if code := Main(context.Background(), []string{"source", "test", input}, deps); code != 0 {
+		t.Fatalf("code=%d out=%q err=%q", code, stdout.String(), stderr.String())
+	}
+	want := "https://raw.githubusercontent.com/RokiLai/agents/main/AGENTS.md"
+	if requested != want || !strings.Contains(stdout.String(), "已转换为原始文件地址") || !strings.Contains(stdout.String(), want) {
+		t.Fatalf("requested=%q out=%q", requested, stdout.String())
 	}
 }
 
@@ -142,6 +160,31 @@ func TestSourceSetConfirmAndCancel(t *testing.T) {
 	}
 }
 
+func TestSourceSetPersistsNormalizedGitHubURL(t *testing.T) {
+	deps, stdout, stderr, home := testDeps(t)
+	deps.Stdin = strings.NewReader("y\n")
+	deps.IsTerminal = func() bool { return true }
+	deps.HTTPClient = &http.Client{Transport: appRoundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, Status: "200 OK", Header: http.Header{"Content-Type": []string{"text/plain"}}, Body: io.NopCloser(strings.NewReader("rules\n"))}, nil
+	})}
+	if err := os.MkdirAll(filepath.Join(home, "config"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(home, "config/agents-url")
+	if err := os.WriteFile(path, []byte(config.AgentsURLMarker+"\nhttps://old.test/AGENTS.md\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	input := "https://github.com/RokiLai/agents/blob/main/AGENTS.md"
+	if code := Main(context.Background(), []string{"source", "set", input}, deps); code != 0 {
+		t.Fatalf("code=%d out=%q err=%q", code, stdout.String(), stderr.String())
+	}
+	want := "https://raw.githubusercontent.com/RokiLai/agents/main/AGENTS.md"
+	got, err := config.ReadManagedValue(path, config.AgentsURLMarker)
+	if err != nil || got != want || !strings.Contains(stdout.String(), "已转换为原始文件地址") {
+		t.Fatalf("got=%q out=%q err=%v", got, stdout.String(), err)
+	}
+}
+
 func TestCommitSourceRollsBackConfig(t *testing.T) {
 	home := t.TempDir()
 	cfg := filepath.Join(home, "config")
@@ -206,6 +249,10 @@ func TestInstallDryRunAndUninstallNonTTY(t *testing.T) {
 		t.Fatalf("code=%d err=%q", code, stderr.String())
 	}
 }
+
+type appRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f appRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
 
 func TestUninstallCancelAndExecute(t *testing.T) {
 	for _, input := range []string{"\n", "y\nn\n"} {
