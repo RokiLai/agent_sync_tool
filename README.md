@@ -61,11 +61,11 @@ curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/instal
       --tools codex --shell none
 ```
 
-固定安装 v3.1.0：
+固定安装 v3.1.1：
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/RokiLai/agent_sync_tool/main/install.sh \
-  | AIC_VERSION=v3.1.0 sh -s -- https://example.org/path/to/AGENTS.md
+  | AIC_VERSION=v3.1.1 sh -s -- https://example.org/path/to/AGENTS.md
 ```
 
 完整安装和恢复说明见 [安装、升级与恢复](docs/install-and-recovery.md)。

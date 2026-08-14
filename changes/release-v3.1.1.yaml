@@ -1,0 +1,24 @@
+task: release-v3.1.1
+summary: 将 Agent Sync Tool 版本提升至 3.1.1 并发布 GitHub Release
+allowed_paths:
+  - changes/release-v3.1.1.yaml
+  - internal/app/app.go
+  - internal/app/app_test.go
+  - scripts/build-release.sh
+  - test/integration/quality_gate_test.go
+  - test/integration/readonly_test.go
+  - test/integration/upgrade_test.go
+  - README.md
+  - docs/command-reference.md
+  - docs/install-and-recovery.md
+constraints:
+  - 版本号统一为 3.1.1，Git 标签统一为 v3.1.1
+  - 不包含未跟踪的重构方案文档
+  - 不修改功能逻辑或公开命令契约
+  - 发布产物必须通过 SHA-256 和版本自检
+verification:
+  - 变更范围检查
+  - Go vet 与全量 race 测试
+  - 四平台交叉构建
+  - Release 产物验证
+  - GitHub Actions 与公开 Release 验证
