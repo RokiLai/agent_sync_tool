@@ -1,6 +1,10 @@
 #!/bin/sh
 set -eu
-output=${1:-dist}; version=${AIC_BUILD_VERSION:-3.3.1}
+script_dir=$(cd "$(dirname "$0")" && pwd)
+root_dir=$(cd "$script_dir/.." && pwd)
+output=${1:-dist}
+default_version=$(tr -d '\r\n' < "$root_dir/VERSION" 2>/dev/null || echo "")
+version=${AIC_BUILD_VERSION:-$default_version}
 command_name=agentsync
 primary_artifact_prefix=agentsync
 legacy_artifact_prefix=aic

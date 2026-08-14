@@ -25,9 +25,17 @@ import (
 	"github.com/RokiLai/agent_sync_tool/internal/terminalprogress"
 	"github.com/RokiLai/agent_sync_tool/internal/uninstall"
 	"github.com/RokiLai/agent_sync_tool/internal/upgrade"
+
+	agentsynctool "github.com/RokiLai/agent_sync_tool"
 )
 
-var Version = "3.3.1"
+var Version = ""
+
+func init() {
+	if Version == "" {
+		Version = agentsynctool.Version
+	}
+}
 
 type Dependencies struct {
 	Stdin            io.Reader

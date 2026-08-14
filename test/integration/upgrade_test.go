@@ -13,10 +13,12 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+
+	agentsynctool "github.com/RokiLai/agent_sync_tool"
 )
 
 func TestBinaryGoToGoUpgradeAndRollback(t *testing.T) {
-	binary := buildAICVersion(t, "3.3.0")
+	binary := buildAICVersion(t, "3.3.1")
 	candidateBinary := buildAIC(t)
 	home := t.TempDir()
 	configDir := filepath.Join(home, "config/bin")
@@ -40,7 +42,7 @@ func TestBinaryGoToGoUpgradeAndRollback(t *testing.T) {
 	var bad atomic.Bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/latest/download/checksums.txt" {
-			http.Redirect(w, r, "/download/v3.3.1/checksums.txt", http.StatusFound)
+			http.Redirect(w, r, "/download/v"+agentsynctool.Version+"/checksums.txt", http.StatusFound)
 			return
 		}
 		if filepath.Base(r.URL.Path) == "checksums.txt" {
@@ -58,8 +60,9 @@ func TestBinaryGoToGoUpgradeAndRollback(t *testing.T) {
 	cmd := exec.Command(binary, "upgrade")
 	cmd.Env = env
 	out, err := cmd.CombinedOutput()
-	if err != nil || !strings.Contains(string(out), "升级成功：v3.3.0 → v3.3.1") || strings.Contains(string(out), "\x1b[") {
-		t.Fatalf("out=%s err=%v", out, err)
+	want := fmt.Sprintf("升级成功：v3.3.1 → v%s", agentsynctool.Version)
+	if err != nil || !strings.Contains(string(out), want) || strings.Contains(string(out), "\x1b[") {
+		t.Fatalf("out=%s err=%v want=%s", out, err, want)
 	}
 	before, _ := os.ReadFile(installed)
 	bad.Store(true)

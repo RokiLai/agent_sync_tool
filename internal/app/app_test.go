@@ -35,7 +35,7 @@ func TestUpgradeChecksConfirmsAndRendersProgress(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(installed), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(installed, []byte("#!/bin/sh\nprintf 'ai-instructions 3.3.1\\n'\n"), 0700); err != nil {
+	if err := os.WriteFile(installed, []byte("#!/bin/sh\nprintf 'ai-instructions "+Version+"\\n'\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
 	candidate := []byte("#!/bin/sh\nprintf 'ai-instructions 3.4.0\\n'\n")
@@ -80,7 +80,7 @@ func TestUpgradeChecksConfirmsAndRendersProgress(t *testing.T) {
 	if string(got) != string(candidate) || artifactRequests.Load() != 1 {
 		t.Fatalf("artifactRequests=%d installed=%q", artifactRequests.Load(), got)
 	}
-	for _, want := range []string{"当前版本：v3.3.1", "最新版本：v3.4.0", "100%", "升级成功：v3.3.1 → v3.4.0"} {
+	for _, want := range []string{"当前版本：v" + Version, "最新版本：v3.4.0", "100%", "升级成功：v" + Version + " → v3.4.0"} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("out=%q missing=%q", stdout.String(), want)
 		}
@@ -465,7 +465,7 @@ func TestUpgradeInteractiveTerminalSpinner(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(50 * time.Millisecond)
 		if r.URL.Path == "/latest/download/checksums.txt" {
-			http.Redirect(w, r, "/download/v3.3.1/checksums.txt", http.StatusFound)
+			http.Redirect(w, r, "/download/v"+Version+"/checksums.txt", http.StatusFound)
 			return
 		}
 		if filepath.Base(r.URL.Path) == "checksums.txt" {
@@ -480,7 +480,7 @@ func TestUpgradeInteractiveTerminalSpinner(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(installed), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(installed, []byte("#!/bin/sh\nprintf 'ai-instructions 3.3.1\\n'\n"), 0700); err != nil {
+	if err := os.WriteFile(installed, []byte("#!/bin/sh\nprintf 'ai-instructions "+Version+"\\n'\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
 

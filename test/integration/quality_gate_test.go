@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	agentsynctool "github.com/RokiLai/agent_sync_tool"
 )
 
 func TestQualityGateKeepsRaceTimeoutVetAndCrossBuild(t *testing.T) {
@@ -26,7 +28,7 @@ func TestQualityGateKeepsRaceTimeoutVetAndCrossBuild(t *testing.T) {
 	}
 }
 
-func TestReleaseBuildNormalizesTagVersion(t *testing.T) {
+func TestReleaseBuildReadsVersionFile(t *testing.T) {
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("runtime.Caller failed")
@@ -37,9 +39,28 @@ func TestReleaseBuildNormalizesTagVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(data)
-	for _, expected := range []string{"AIC_BUILD_VERSION:-3.3.1", "command_name=agentsync", "primary_artifact_prefix=agentsync", "legacy_artifact_prefix=aic", "[vV]*) version=${version#?}"} {
+	for _, expected := range []string{"VERSION", "AIC_BUILD_VERSION", "command_name=agentsync", "primary_artifact_prefix=agentsync", "legacy_artifact_prefix=aic", "[vV]*) version=${version#?}"} {
 		if !strings.Contains(text, expected) {
 			t.Fatalf("release build is missing %q", expected)
 		}
+	}
+}
+
+func TestVersionFileMatchesAppVersion(t *testing.T) {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	path := filepath.Join(filepath.Dir(file), "..", "..", "VERSION")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := strings.TrimSpace(string(data))
+	if expected == "" {
+		t.Fatal("VERSION file is empty")
+	}
+	if agentsynctool.Version != expected {
+		t.Fatalf("agentsynctool.Version = %q, want %q", agentsynctool.Version, expected)
 	}
 }

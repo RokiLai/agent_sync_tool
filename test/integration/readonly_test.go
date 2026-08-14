@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	agentsynctool "github.com/RokiLai/agent_sync_tool"
 )
 
 func projectRoot(t *testing.T) string {
@@ -64,7 +66,7 @@ func TestBinaryVersionAliases(t *testing.T) {
 		cmd := exec.Command(binary, arg)
 		cmd.Env = append(os.Environ(), "HOME="+home)
 		out, err := cmd.Output()
-		if err != nil || string(out) != "ai-instructions 3.3.1\n" {
+		if err != nil || string(out) != "ai-instructions "+agentsynctool.Version+"\n" {
 			t.Fatalf("arg=%s out=%q err=%v", arg, out, err)
 		}
 	}

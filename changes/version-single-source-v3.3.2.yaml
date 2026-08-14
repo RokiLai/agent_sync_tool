@@ -1,0 +1,23 @@
+task: version-single-source-v3.3.2
+summary: 建立根目录 VERSION 单一配置文件，重构版本管理为单一事实来源（SSOT）并发布 v3.3.2
+allowed_paths:
+  - changes/version-single-source-v3.3.2.yaml
+  - .gitignore
+  - VERSION
+  - version.go
+  - Makefile
+  - internal/app/app.go
+  - internal/app/app_test.go
+  - scripts/build-release.sh
+  - test/integration/quality_gate_test.go
+  - test/integration/readonly_test.go
+  - test/integration/upgrade_test.go
+constraints:
+  - 根目录 VERSION 为全项目唯一版本定义文件
+  - build-release.sh 与 Go 程序统一读取 VERSION 文件
+  - 添加 .gitignore 忽略 dist/ 临时构建目录
+  - 测试用例使用动态 app.Version 校验，消除多处硬编码
+verification:
+  - make verify 全量质量门禁（gofmt, vet, race, cross-build）
+  - make release 打包并校验 release 产物
+  - GitHub Release 发布并执行真实 upgrade 升级冒烟测试
