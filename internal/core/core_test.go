@@ -131,6 +131,31 @@ func TestRCInstallValidateAndRemove(t *testing.T) {
 	}
 }
 
+func TestRCInstallReplacesLegacyBlock(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ".zshrc")
+	legacyContent := fmt.Sprintf("export FOO=1\n%s\n[ -r \"/old/path\" ] && . \"/old/path\"\n%s\nexport BAR=2\n", config.LegacyBlockBegin, config.LegacyBlockEnd)
+	if err := os.WriteFile(path, []byte(legacyContent), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := InstallRC(path, "/new/shell.sh"); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(data)
+	if strings.Contains(text, config.LegacyBlockBegin) || strings.Contains(text, config.LegacyBlockEnd) {
+		t.Fatalf("legacy block was not removed: %s", text)
+	}
+	if !strings.Contains(text, config.BlockBegin) || !strings.Contains(text, "/new/shell.sh") {
+		t.Fatalf("new block missing: %s", text)
+	}
+	if !strings.Contains(text, "export FOO=1") || !strings.Contains(text, "export BAR=2") {
+		t.Fatalf("user content corrupted: %s", text)
+	}
+}
+
 func TestShellInitIncludesCompletions(t *testing.T) {
 	c := config.Config{Paths: config.Paths{BinDir: "/tmp/testbin"}}
 	out := ShellInit(c)

@@ -35,14 +35,14 @@ func TestUpgradeChecksConfirmsAndRendersProgress(t *testing.T) {
 	defer func() { Version = origVersion }()
 
 	deps, stdout, stderr, home := testDeps(t)
-	installed := filepath.Join(home, "config/bin/ai-instructions")
+	installed := filepath.Join(home, "config/bin/agentsync")
 	if err := os.MkdirAll(filepath.Dir(installed), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(installed, []byte("#!/bin/sh\nprintf 'ai-instructions "+Version+"\\n'\n"), 0700); err != nil {
+	if err := os.WriteFile(installed, []byte("#!/bin/sh\nprintf 'agentsync "+Version+"\\n'\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	candidate := []byte("#!/bin/sh\nprintf 'ai-instructions 3.4.0\\n'\n")
+	candidate := []byte("#!/bin/sh\nprintf 'agentsync 3.4.0\\n'\n")
 	sum := sha256.Sum256(candidate)
 	artifact, err := core.CurrentArtifact()
 	if err != nil {
@@ -97,7 +97,7 @@ func TestUpgradeCancelDoesNotDownloadArtifact(t *testing.T) {
 	defer func() { Version = origVersion }()
 
 	deps, stdout, stderr, home := testDeps(t)
-	installed := filepath.Join(home, "config/bin/ai-instructions")
+	installed := filepath.Join(home, "config/bin/agentsync")
 	if err := os.MkdirAll(filepath.Dir(installed), 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestUpgradeCurrentVersionSkipsArtifact(t *testing.T) {
 	defer func() { Version = origVersion }()
 
 	deps, stdout, stderr, home := testDeps(t)
-	installed := filepath.Join(home, "config/bin/ai-instructions")
+	installed := filepath.Join(home, "config/bin/agentsync")
 	if err := os.MkdirAll(filepath.Dir(installed), 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +174,7 @@ func TestHelpAndVersion(t *testing.T) {
 	for _, test := range []struct {
 		args     []string
 		expected string
-	}{{nil, "用法：agentsync"}, {[]string{"--version"}, "ai-instructions " + Version + "\n"}, {[]string{"-V"}, "ai-instructions " + Version + "\n"}} {
+	}{{nil, "用法：agentsync"}, {[]string{"--version"}, "agentsync " + Version + "\n"}, {[]string{"-V"}, "agentsync " + Version + "\n"}} {
 		deps, stdout, _, _ := testDeps(t)
 		if code := Main(context.Background(), test.args, deps); code != 0 || !strings.Contains(stdout.String(), test.expected) {
 			t.Fatalf("args=%v code=%d output=%q", test.args, code, stdout.String())
@@ -394,7 +394,7 @@ func TestInstallDryRunAndUninstallNonTTY(t *testing.T) {
 		return oldLookup(key)
 	}
 	exe := filepath.Join(home, "aic")
-	if err := os.WriteFile(exe, []byte("ai-instructions"), 0700); err != nil {
+	if err := os.WriteFile(exe, []byte("agentsync"), 0700); err != nil {
 		t.Fatal(err)
 	}
 	deps.Executable = exe
@@ -427,8 +427,8 @@ func TestUninstallCancelAndExecute(t *testing.T) {
 		if err := os.MkdirAll(bin, 0755); err != nil {
 			t.Fatal(err)
 		}
-		installed := filepath.Join(cfg, "bin/ai-instructions")
-		if err := os.WriteFile(installed, []byte("ai-instructions"), 0700); err != nil {
+		installed := filepath.Join(cfg, "bin/agentsync")
+		if err := os.WriteFile(installed, []byte("agentsync"), 0700); err != nil {
 			t.Fatal(err)
 		}
 		if err := os.Symlink(installed, filepath.Join(bin, "aic")); err != nil {
@@ -480,11 +480,11 @@ func TestUpgradeInteractiveTerminalSpinner(t *testing.T) {
 	defer server.Close()
 
 	deps, _, stderr, home := testDeps(t)
-	installed := filepath.Join(home, "config/bin/ai-instructions")
+	installed := filepath.Join(home, "config/bin/agentsync")
 	if err := os.MkdirAll(filepath.Dir(installed), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(installed, []byte("#!/bin/sh\nprintf 'ai-instructions "+Version+"\\n'\n"), 0700); err != nil {
+	if err := os.WriteFile(installed, []byte("#!/bin/sh\nprintf 'agentsync "+Version+"\\n'\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
 

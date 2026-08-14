@@ -59,7 +59,7 @@ func TestBootstrapInstallAndChecksumFailure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("out=%s err=%v", out, err)
 	}
-	installed := filepath.Join(home, "config/bin/ai-instructions")
+	installed := filepath.Join(home, "config/bin/agentsync")
 	before, err := os.ReadFile(installed)
 	if err != nil {
 		t.Fatal(err)

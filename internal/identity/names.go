@@ -4,8 +4,8 @@ const (
 	PrimaryCommand        = "agentsync"
 	LegacyShortCommand    = "aic"
 	LegacyLongCommand     = "ai-instructions"
-	ManagedBinaryName     = "ai-instructions"
-	VersionOutputName     = "ai-instructions"
+	ManagedBinaryName     = "agentsync"
+	VersionOutputName     = "agentsync"
 	PrimaryArtifactPrefix = "agentsync"
 	LegacyArtifactPrefix  = "aic"
 )

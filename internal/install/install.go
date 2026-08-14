@@ -204,19 +204,19 @@ func Preflight(p Plan, c config.Config) error {
 func managedFile(path string, data []byte, c config.Config) bool {
 	first := strings.SplitN(string(data), "\n", 2)[0]
 	if path == filepath.Join(c.ConfigDir, "repo-path") {
-		return first == config.RepoPathMarker
+		return first == config.RepoPathMarker || first == config.LegacyRepoPathMarker
 	}
 	if path == filepath.Join(c.ConfigDir, "agents-url") {
-		return first == config.AgentsURLMarker
+		return first == config.AgentsURLMarker || first == config.LegacyAgentsURLMarker
 	}
 	if path == filepath.Join(c.ConfigDir, "enabled-tools") {
-		return first == config.EnabledToolsMarker
+		return first == config.EnabledToolsMarker || first == config.LegacyEnabledToolsMarker
 	}
 	if path == filepath.Join(c.ConfigDir, "shell-integration.sh") {
-		return first == config.ManagedMarker
+		return first == config.ManagedMarker || first == config.LegacyManagedMarker
 	}
-	if path == filepath.Join(c.ConfigDir, "bin", identity.ManagedBinaryName) {
-		return strings.Contains(string(data), identity.VersionOutputName)
+	if path == filepath.Join(c.ConfigDir, "bin", identity.ManagedBinaryName) || path == filepath.Join(c.ConfigDir, "bin/ai-instructions") {
+		return strings.Contains(string(data), identity.VersionOutputName) || strings.Contains(string(data), "ai-instructions")
 	}
 	return false
 }
@@ -274,7 +274,7 @@ func Execute(p Plan, c config.Config) error {
 				return err
 			}
 		case "remove-managed-link":
-			if target, err := os.Readlink(op.Path); err == nil && target == op.Target {
+			if target, err := os.Readlink(op.Path); err == nil && (target == op.Target || strings.Contains(target, "ai-instructions") || strings.Contains(target, "agentsync")) {
 				if err := os.Remove(op.Path); err != nil {
 					return err
 				}

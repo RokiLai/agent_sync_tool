@@ -198,8 +198,8 @@ agentsync doctor
 runtime 当前内容可以直接读取：
 
 ```sh
-cat ~/.local/share/ai-instructions-runtime/AGENTS.md
-cat ~/.local/share/ai-instructions-runtime/REVISION
+cat ~/.local/share/agentsync-runtime/AGENTS.md
+cat ~/.local/share/agentsync-runtime/REVISION
 ```
 
 ### 重新安装

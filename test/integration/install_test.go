@@ -82,3 +82,66 @@ func TestBinaryInstallConflictZeroWrite(t *testing.T) {
 		t.Fatal("foreign changed")
 	}
 }
+
+func TestLegacyConfigAndMarkersMigration(t *testing.T) {
+	binary := buildAIC(t)
+	home := t.TempDir()
+	legacyConfigDir := filepath.Join(home, ".config/ai-instructions")
+	if err := os.MkdirAll(legacyConfigDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("migrated rules\n")) }))
+	defer server.Close()
+
+	// Write legacy markers in legacy config
+	if err := os.WriteFile(filepath.Join(legacyConfigDir, "agents-url"), []byte("# ai-instructions AGENTS URL v1\n"+server.URL+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(legacyConfigDir, "enabled-tools"), []byte("# ai-instructions enabled tools v1\ncodex\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Legacy shell rc block
+	zshrc := filepath.Join(home, ".zshrc")
+	legacyBlock := "# >>> ai-instructions managed block >>>\n[ -r \"" + legacyConfigDir + "/shell-integration.sh\" ] && . \"" + legacyConfigDir + "/shell-integration.sh\"\n# <<< ai-instructions managed block <<<\n"
+	if err := os.WriteFile(zshrc, []byte(legacyBlock), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	env := append(os.Environ(), "HOME="+home, "SHELL=/bin/zsh")
+	// Run status - should read migrated config
+	cmd := exec.Command(binary, "status")
+	cmd.Env = env
+	out, err := cmd.CombinedOutput()
+	if err != nil || !strings.Contains(string(out), server.URL) {
+		t.Fatalf("status failed on legacy config: out=%s err=%v", out, err)
+	}
+
+	// Run install to migrate RC and create new layout
+	cmd = exec.Command(binary, "install", server.URL, "--shell", "zsh", "--tools", "codex")
+	cmd.Env = env
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("install migration failed: out=%s err=%v", out, err)
+	}
+
+	// Verify new config directory exists and has new markers
+	newConfigDir := filepath.Join(home, ".config/agentsync")
+	urlData, err := os.ReadFile(filepath.Join(newConfigDir, "agents-url"))
+	if err != nil || !strings.Contains(string(urlData), "# agentsync AGENTS URL v1") {
+		t.Fatalf("new agents-url missing or wrong marker: %s err=%v", urlData, err)
+	}
+
+	// Verify zshrc has replaced legacy block with new block
+	rcData, err := os.ReadFile(zshrc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rcText := string(rcData)
+	if strings.Contains(rcText, "# >>> ai-instructions managed block >>>") {
+		t.Fatalf("legacy block still present in zshrc: %s", rcText)
+	}
+	if !strings.Contains(rcText, "# >>> agentsync managed block >>>") {
+		t.Fatalf("new agentsync block missing in zshrc: %s", rcText)
+	}
+}

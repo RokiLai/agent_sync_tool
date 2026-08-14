@@ -106,11 +106,10 @@ func Apply(ctx context.Context, o Options, plan Plan) (Result, error) {
 	}
 	emit(o, Progress{Stage: "candidate", Name: "候选版本"})
 	out, err := exec.CommandContext(ctx, tempPath, "version").Output()
-	versionPrefix := identity.VersionOutputName + " "
-	if err != nil || !strings.HasPrefix(string(out), versionPrefix) {
+	version, verErr := parseCandidateVersion(string(out))
+	if err != nil || verErr != nil {
 		return Result{}, errors.New("候选工具校验失败；当前工具保持不变")
 	}
-	version := strings.TrimSpace(strings.TrimPrefix(string(out), versionPrefix))
 	if plan.TargetVersion != "" && version != plan.TargetVersion {
 		return Result{}, fmt.Errorf("候选版本不匹配：expected=%s actual=%s；当前工具保持不变", plan.TargetVersion, version)
 	}
@@ -244,4 +243,13 @@ func emit(o Options, p Progress) {
 	if o.Progress != nil {
 		o.Progress(p)
 	}
+}
+
+func parseCandidateVersion(out string) (string, error) {
+	for _, prefix := range []string{identity.VersionOutputName + " ", "agentsync ", "ai-instructions "} {
+		if strings.HasPrefix(out, prefix) {
+			return strings.TrimSpace(strings.TrimPrefix(out, prefix)), nil
+		}
+	}
+	return "", errors.New("候选工具校验失败；当前工具保持不变")
 }

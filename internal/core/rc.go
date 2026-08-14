@@ -37,6 +37,10 @@ func ValidateRC(path string) error {
 	if begin != end {
 		return errors.New("Shell 配置存在不完整的受管块")
 	}
+	legacyBegin, legacyEnd := strings.Contains(text, config.LegacyBlockBegin), strings.Contains(text, config.LegacyBlockEnd)
+	if legacyBegin != legacyEnd {
+		return errors.New("Shell 配置存在不完整的受管块")
+	}
 	return nil
 }
 
@@ -53,11 +57,18 @@ func InstallRC(path, shellFile string) error {
 	} else if err != nil {
 		return err
 	}
-	if strings.Contains(string(data), config.BlockBegin) {
+	text := string(data)
+	if strings.Contains(text, config.LegacyBlockBegin) {
+		text = removeBlockFromText(text, config.LegacyBlockBegin, config.LegacyBlockEnd)
+	}
+	if strings.Contains(text, config.BlockBegin) {
+		if text != string(data) {
+			return managedfs.AtomicWrite(path, []byte(text), 0600)
+		}
 		return nil
 	}
 	block := fmt.Sprintf("\n%s\n[ -r \"%s\" ] && . \"%s\"\n%s\n", config.BlockBegin, shellFile, shellFile, config.BlockEnd)
-	return managedfs.AtomicWrite(path, append(data, []byte(block)...), 0600)
+	return managedfs.AtomicWrite(path, append([]byte(text), []byte(block)...), 0600)
 }
 
 func RemoveRC(path string) error {
@@ -69,17 +80,36 @@ func RemoveRC(path string) error {
 		return err
 	}
 	text := string(data)
-	begin := strings.Index(text, config.BlockBegin)
-	if begin < 0 {
+	if strings.Contains(text, config.BlockBegin) {
+		if !strings.Contains(text, config.BlockEnd) {
+			return errors.New("Shell 配置受管块不完整")
+		}
+		text = removeBlockFromText(text, config.BlockBegin, config.BlockEnd)
+	}
+	if strings.Contains(text, config.LegacyBlockBegin) {
+		if !strings.Contains(text, config.LegacyBlockEnd) {
+			return errors.New("Shell 配置受管块不完整")
+		}
+		text = removeBlockFromText(text, config.LegacyBlockBegin, config.LegacyBlockEnd)
+	}
+	if text == string(data) {
 		return nil
 	}
-	endRel := strings.Index(text[begin:], config.BlockEnd)
-	if endRel < 0 {
-		return errors.New("Shell 配置受管块不完整")
+	return managedfs.AtomicWrite(path, []byte(text), 0600)
+}
+
+func removeBlockFromText(text, beginMarker, endMarker string) string {
+	begin := strings.Index(text, beginMarker)
+	if begin < 0 {
+		return text
 	}
-	end := begin + endRel + len(config.BlockEnd)
+	endRel := strings.Index(text[begin:], endMarker)
+	if endRel < 0 {
+		return text
+	}
+	end := begin + endRel + len(endMarker)
 	if end < len(text) && text[end] == '\n' {
 		end++
 	}
-	return managedfs.AtomicWrite(path, []byte(text[:begin]+text[end:]), 0600)
+	return text[:begin] + text[end:]
 }

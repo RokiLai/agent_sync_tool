@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
-base_url=${AIC_RELEASE_BASE_URL:-https://github.com/RokiLai/agent_sync_tool/releases}
-version=${AIC_VERSION:-latest}
+base_url=${AGENTSYNC_RELEASE_BASE_URL:-${AIC_RELEASE_BASE_URL:-https://github.com/RokiLai/agent_sync_tool/releases}}
+version=${AGENTSYNC_VERSION:-${AIC_VERSION:-latest}}
 command_name=agentsync
 artifact_prefix=agentsync
 temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/${command_name}-bootstrap.XXXXXX") || exit 1

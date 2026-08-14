@@ -156,7 +156,7 @@ func Doctor(out io.Writer, c config.Config, deps Dependencies, shell string) boo
 		}
 	}
 	shellFile := filepath.Join(c.ConfigDir, "shell-integration.sh")
-	if firstLine(shellFile) == config.ManagedMarker {
+	if firstLine(shellFile) == config.ManagedMarker || firstLine(shellFile) == config.LegacyManagedMarker {
 		ok(out, "Shell 集成文件正确")
 	} else {
 		fmt.Fprintf(out, "[WARN] Shell 集成文件未安装或不受管：%s\n", shellFile)
@@ -169,7 +169,7 @@ func Doctor(out io.Writer, c config.Config, deps Dependencies, shell string) boo
 	case "bash":
 		rc = filepath.Join(c.HomeDir, ".bashrc")
 	}
-	if rc != "" && containsBoth(rc, config.BlockBegin, config.BlockEnd) {
+	if rc != "" && (containsBoth(rc, config.BlockBegin, config.BlockEnd) || containsBoth(rc, config.LegacyBlockBegin, config.LegacyBlockEnd)) {
 		ok(out, "Shell 配置块正确：%s", rc)
 	} else {
 		fmt.Fprintln(out, "[WARN] 当前 Shell 未加载受管配置块")

@@ -20,11 +20,11 @@ func TestBuildExecuteImmutablePlan(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	installed := filepath.Join(cfg, "bin/ai-instructions")
+	installed := filepath.Join(cfg, "bin/agentsync")
 	if err := os.MkdirAll(filepath.Dir(installed), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(installed, []byte("ai-instructions"), 0700); err != nil {
+	if err := os.WriteFile(installed, []byte("agentsync"), 0700); err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"agentsync", "aic", "ai-instructions"} {

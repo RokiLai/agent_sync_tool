@@ -165,7 +165,7 @@ func TestAutoDetectToolsInstallation(t *testing.T) {
 
 	// 验证 enabled-tools 内容为 agy
 	enabledData, _ := os.ReadFile(filepath.Join(configDir, "enabled-tools"))
-	if strings.TrimSpace(string(enabledData)) != "# ai-instructions enabled tools v1\nagy" {
+	if strings.TrimSpace(string(enabledData)) != "# agentsync enabled tools v1\nagy" {
 		t.Fatalf("unexpected enabled-tools: %s", string(enabledData))
 	}
 }

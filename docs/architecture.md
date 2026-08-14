@@ -30,11 +30,11 @@ internal/lock              跨进程同步锁
 默认配置目录：
 
 ```text
-~/.config/ai-instructions/
+~/.config/agentsync/
 ├── agents-url
 ├── repo-path
 ├── bin/
-│   └── ai-instructions
+│   └── agentsync
 └── shell-integration.sh
 ```
 
@@ -43,7 +43,7 @@ internal/lock              跨进程同步锁
 ## Runtime 布局
 
 ```text
-~/.local/share/ai-instructions-runtime/
+~/.local/share/agentsync-runtime/
 ├── versions/
 │   └── <revision>/
 │       ├── AGENTS.md

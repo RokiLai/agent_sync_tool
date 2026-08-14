@@ -25,8 +25,8 @@ func TestBinaryGoToGoUpgradeAndRollback(t *testing.T) {
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	installed := filepath.Join(configDir, "ai-instructions")
-	old := []byte("#!/bin/sh\nprintf 'ai-instructions 1.0.0\\n'\n")
+	installed := filepath.Join(configDir, "agentsync")
+	old := []byte("#!/bin/sh\nprintf 'agentsync 1.0.0\\n'\n")
 	if err := os.WriteFile(installed, old, 0700); err != nil {
 		t.Fatal(err)
 	}

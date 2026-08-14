@@ -123,10 +123,8 @@ agentsync -V
 输出格式：
 
 ```text
-ai-instructions 3.2.1
+agentsync 3.5.0
 ```
-
-v3.2.1 保留旧输出前缀，以便 v3.1.2 的升级候选校验能够识别新版本。
 
 ## `help`
 
@@ -140,13 +138,15 @@ agentsync -h
 
 | 变量 | 作用 | 默认值 |
 | --- | --- | --- |
-| `AI_INSTRUCTIONS_RUNTIME_DIR` | runtime 根目录 | `~/.local/share/ai-instructions-runtime` |
-| `AI_INSTRUCTIONS_CONFIG_DIR` | 配置和已安装工具目录 | `~/.config/ai-instructions` |
-| `AI_INSTRUCTIONS_BIN_DIR` | 命令入口目录 | `~/.local/bin` |
+| `AGENTSYNC_RUNTIME_DIR` | runtime 根目录 | `~/.local/share/agentsync-runtime` |
+| `AGENTSYNC_CONFIG_DIR` | 配置和已安装工具目录 | `~/.config/agentsync` |
+| `AGENTSYNC_BIN_DIR` | 命令入口目录 | `~/.local/bin` |
 | `CODEX_HOME` | Codex 配置目录 | `~/.codex` |
-| `AI_INSTRUCTIONS_REPO` | 显式指定开发仓库路径 | 自动检测或默认路径 |
-| `AIC_RELEASE_BASE_URL` | Release 下载根地址 | GitHub Releases |
-| `AIC_VERSION` | 安装或升级的目标版本 | `latest` |
+| `AGENTSYNC_REPO` | 显式指定开发仓库路径 | 自动检测或默认路径 |
+| `AGENTSYNC_RELEASE_BASE_URL` | Release 下载根地址 | GitHub Releases |
+| `AGENTSYNC_VERSION` | 安装或升级的目标版本 | `latest` |
+
+> 注：仍向前兼容识别 `AI_INSTRUCTIONS_*` 及 `AIC_*` 历史环境变量。
 
 ## 退出状态
 

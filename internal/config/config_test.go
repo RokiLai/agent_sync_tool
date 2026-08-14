@@ -8,21 +8,42 @@ import (
 
 func TestLoadPathPrecedence(t *testing.T) {
 	home := t.TempDir()
-	env := map[string]string{"HOME": home, "AI_INSTRUCTIONS_RUNTIME_DIR": filepath.Join(home, "custom runtime"), "AI_INSTRUCTIONS_REPO": filepath.Join(home, "repo")}
-	c, err := Load(func(key string) (string, bool) { value, ok := env[key]; return value, ok }, "/missing/aic", "status")
+	env := map[string]string{
+		"HOME":                        home,
+		"AGENTSYNC_RUNTIME_DIR":       filepath.Join(home, "custom runtime"),
+		"AGENTSYNC_REPO":              filepath.Join(home, "repo"),
+		"AI_INSTRUCTIONS_RUNTIME_DIR": filepath.Join(home, "ignored legacy runtime"),
+	}
+	c, err := Load(func(key string) (string, bool) { value, ok := env[key]; return value, ok }, "/missing/agentsync", "status")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.RuntimeDir != env["AI_INSTRUCTIONS_RUNTIME_DIR"] || c.RepositorySource != "environment" {
+	if c.RuntimeDir != env["AGENTSYNC_RUNTIME_DIR"] || c.RepositorySource != "environment" {
 		t.Fatalf("unexpected config: %#v", c)
 	}
-	if c.ConfigDir != filepath.Join(home, ".config/ai-instructions") {
+	if c.ConfigDir != filepath.Join(home, ".config/agentsync") {
 		t.Fatalf("unexpected config dir: %s", c.ConfigDir)
 	}
 }
 
+func TestLoadFallbackToLegacyEnv(t *testing.T) {
+	home := t.TempDir()
+	env := map[string]string{
+		"HOME":                        home,
+		"AI_INSTRUCTIONS_RUNTIME_DIR": filepath.Join(home, "legacy runtime"),
+		"AI_INSTRUCTIONS_REPO":        filepath.Join(home, "legacy repo"),
+	}
+	c, err := Load(func(key string) (string, bool) { value, ok := env[key]; return value, ok }, "/missing/agentsync", "status")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.RuntimeDir != env["AI_INSTRUCTIONS_RUNTIME_DIR"] || c.RepositorySource != "environment" {
+		t.Fatalf("unexpected fallback config: %#v", c)
+	}
+}
+
 func TestLoadRequiresHome(t *testing.T) {
-	if _, err := Load(func(string) (string, bool) { return "", false }, "aic", "help"); err == nil {
+	if _, err := Load(func(string) (string, bool) { return "", false }, "agentsync", "help"); err == nil {
 		t.Fatal("expected HOME error")
 	}
 }
@@ -51,11 +72,50 @@ func TestReadManagedValue(t *testing.T) {
 	if err != nil || value != "https://example.test/AGENTS.md" {
 		t.Fatalf("value=%q err=%v", value, err)
 	}
+
+	// Legacy marker compatibility
+	legacyPath := filepath.Join(t.TempDir(), "legacy-url")
+	if err := os.WriteFile(legacyPath, []byte(LegacyAgentsURLMarker+"\nhttps://example.test/LEGACY.md\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	legacyValue, err := ReadManagedValue(legacyPath, AgentsURLMarker)
+	if err != nil || legacyValue != "https://example.test/LEGACY.md" {
+		t.Fatalf("legacy value=%q err=%v", legacyValue, err)
+	}
+}
+
+func TestLoadAutoMigratesLegacyConfig(t *testing.T) {
+	home := t.TempDir()
+	legacyConfigDir := filepath.Join(home, ".config/ai-instructions")
+	if err := os.MkdirAll(legacyConfigDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(legacyConfigDir, "agents-url"), []byte(LegacyAgentsURLMarker+"\nhttps://example.test/AGENTS.md\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	lookup := func(key string) (string, bool) {
+		if key == "HOME" {
+			return home, true
+		}
+		return "", false
+	}
+	c, err := Load(lookup, "/missing/agentsync", "status")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.ConfigDir != filepath.Join(home, ".config/agentsync") {
+		t.Fatalf("expected migrated config dir, got %s", c.ConfigDir)
+	}
+	// Check migrated file
+	migratedURL, err := ReadManagedValue(filepath.Join(c.ConfigDir, "agents-url"), AgentsURLMarker)
+	if err != nil || migratedURL != "https://example.test/AGENTS.md" {
+		t.Fatalf("migrated url=%q err=%v", migratedURL, err)
+	}
 }
 
 func TestLoadSavedAndDefaultRepository(t *testing.T) {
 	home := t.TempDir()
-	configDir := filepath.Join(home, ".config/ai-instructions")
+	configDir := filepath.Join(home, ".config/agentsync")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -69,31 +129,31 @@ func TestLoadSavedAndDefaultRepository(t *testing.T) {
 		}
 		return "", false
 	}
-	c, err := Load(lookup, "/missing/aic", "status")
+	c, err := Load(lookup, "/missing/agentsync", "status")
 	if err != nil || c.RepositoryDir != repo || c.RepositorySource != "saved" {
 		t.Fatalf("saved config: %#v err=%v", c, err)
 	}
 	if err := os.Remove(filepath.Join(configDir, "repo-path")); err != nil {
 		t.Fatal(err)
 	}
-	c, err = Load(lookup, "/missing/aic", "status")
-	if err != nil || c.RepositorySource != "default" || c.RepositoryDir != filepath.Join(home, ".local/share/ai-instructions") {
+	c, err = Load(lookup, "/missing/agentsync", "status")
+	if err != nil || c.RepositorySource != "default" || c.RepositoryDir != filepath.Join(home, ".local/share/agentsync") {
 		t.Fatalf("default config: %#v err=%v", c, err)
 	}
 }
 
 func TestLoadDetectsReleaseFromManagedDefaultPath(t *testing.T) {
 	home := t.TempDir()
-	configDir := filepath.Join(home, ".config/ai-instructions")
+	configDir := filepath.Join(home, ".config/agentsync")
 	installedDir := filepath.Join(configDir, "bin")
-	defaultRepo := filepath.Join(home, ".local/share/ai-instructions")
+	defaultRepo := filepath.Join(home, ".local/share/agentsync")
 	if err := os.MkdirAll(installedDir, 0755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(configDir, "repo-path"), []byte(RepoPathMarker+"\n"+defaultRepo+"\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(installedDir, "ai-instructions"), []byte("binary"), 0700); err != nil {
+	if err := os.WriteFile(filepath.Join(installedDir, "agentsync"), []byte("binary"), 0700); err != nil {
 		t.Fatal(err)
 	}
 	lookup := func(key string) (string, bool) {
@@ -102,14 +162,14 @@ func TestLoadDetectsReleaseFromManagedDefaultPath(t *testing.T) {
 		}
 		return "", false
 	}
-	c, err := Load(lookup, filepath.Join(installedDir, "ai-instructions"), "status")
+	c, err := Load(lookup, filepath.Join(installedDir, "agentsync"), "status")
 	if err != nil || c.RepositorySource != "release" || c.RepositoryDir != defaultRepo {
 		t.Fatalf("release config: %#v err=%v", c, err)
 	}
 	if err := os.MkdirAll(filepath.Join(defaultRepo, ".git"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	c, err = Load(lookup, filepath.Join(installedDir, "ai-instructions"), "status")
+	c, err = Load(lookup, filepath.Join(installedDir, "agentsync"), "status")
 	if err != nil || c.RepositorySource != "saved" {
 		t.Fatalf("repository config: %#v err=%v", c, err)
 	}
@@ -123,7 +183,7 @@ func TestDetectRepository(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(repo, "bin"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	tool := filepath.Join(repo, "bin/ai-instructions")
+	tool := filepath.Join(repo, "bin/agentsync")
 	if err := os.WriteFile(tool, []byte("tool"), 0600); err != nil {
 		t.Fatal(err)
 	}

@@ -15,7 +15,7 @@ func TestPublicNames(t *testing.T) {
 	if got, want := HistoricalCommandNames(), []string{"agentsync", "aic", "ai-instructions"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("HistoricalCommandNames() = %q, want %q", got, want)
 	}
-	if LegacyArtifactPrefix != "aic" || ManagedBinaryName != "ai-instructions" || VersionOutputName != "ai-instructions" {
+	if LegacyArtifactPrefix != "aic" || ManagedBinaryName != "agentsync" || VersionOutputName != "agentsync" {
 		t.Fatal("legacy compatibility names changed")
 	}
 	if !IsLegacyCommand("aic") || !IsLegacyCommand("ai-instructions") || IsLegacyCommand("agentsync") {

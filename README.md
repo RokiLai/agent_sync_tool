@@ -65,7 +65,7 @@ agentsync version            # 查看当前 CLI 版本
 | **Claude** | `~/.claude/CLAUDE.md` | Anthropic Claude Code 规则入口 |
 | **Antigravity** | `~/.gemini/GEMINI.md` | Google Antigravity 规则入口 |
 
-默认配置与运行时数据分别存放在 `~/.config/ai-instructions/` 与 `~/.local/share/ai-instructions-runtime/`。
+默认配置与运行时数据分别存放在 `~/.config/agentsync/` 与 `~/.local/share/agentsync-runtime/`。
 
 ---
 

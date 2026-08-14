@@ -18,7 +18,7 @@ func fixture(t *testing.T) (Installer, Options, config.Config) {
 		t.Fatal(err)
 	}
 	exe := filepath.Join(home, "agentsync")
-	if err := os.WriteFile(exe, []byte("ai-instructions binary"), 0700); err != nil {
+	if err := os.WriteFile(exe, []byte("agentsync binary"), 0700); err != nil {
 		t.Fatal(err)
 	}
 	c := config.Config{Paths: config.Paths{HomeDir: home, RuntimeDir: filepath.Join(home, "runtime"), ConfigDir: filepath.Join(home, "config"), BinDir: filepath.Join(home, "bin"), CodexHome: filepath.Join(home, "codex"), RepositoryDir: repo}}
@@ -65,7 +65,7 @@ func TestPrepareExecuteIdempotent(t *testing.T) {
 
 func TestExecuteRemovesManagedLegacyLinksAndPreservesForeignFiles(t *testing.T) {
 	i, o, c := fixture(t)
-	installed := filepath.Join(c.ConfigDir, "bin", "ai-instructions")
+	installed := filepath.Join(c.ConfigDir, "bin", "agentsync")
 	if err := os.MkdirAll(c.BinDir, 0755); err != nil {
 		t.Fatal(err)
 	}

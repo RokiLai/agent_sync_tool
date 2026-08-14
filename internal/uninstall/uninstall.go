@@ -25,30 +25,53 @@ func Build(c config.Config, shell string) Plan {
 		collectLink(&p, path, runtimeFile)
 	}
 	installed := filepath.Join(c.ConfigDir, "bin", identity.ManagedBinaryName)
+	legacyInstalled := filepath.Join(c.ConfigDir, "bin/ai-instructions")
 	for _, name := range identity.HistoricalCommandNames() {
-		collectLink(&p, filepath.Join(c.BinDir, name), installed)
+		link := filepath.Join(c.BinDir, name)
+		if got, err := os.Readlink(link); err == nil && (got == installed || got == legacyInstalled) {
+			p.Symlinks = append(p.Symlinks, link)
+		} else if exists(link) {
+			p.Warnings = append(p.Warnings, "不是本工具管理的入口，保留："+link)
+		}
 	}
-	for path, marker := range map[string]string{
-		filepath.Join(c.ConfigDir, "repo-path"):            config.RepoPathMarker,
-		filepath.Join(c.ConfigDir, "agents-url"):           config.AgentsURLMarker,
-		filepath.Join(c.ConfigDir, "enabled-tools"):        config.EnabledToolsMarker,
-		filepath.Join(c.ConfigDir, "shell-integration.sh"): config.ManagedMarker,
+	for path, markers := range map[string][]string{
+		filepath.Join(c.ConfigDir, "repo-path"):            {config.RepoPathMarker, config.LegacyRepoPathMarker},
+		filepath.Join(c.ConfigDir, "agents-url"):           {config.AgentsURLMarker, config.LegacyAgentsURLMarker},
+		filepath.Join(c.ConfigDir, "enabled-tools"):        {config.EnabledToolsMarker, config.LegacyEnabledToolsMarker},
+		filepath.Join(c.ConfigDir, "shell-integration.sh"): {config.ManagedMarker, config.LegacyManagedMarker},
 	} {
-		if firstLine(path) == marker {
+		first := firstLine(path)
+		matched := false
+		for _, m := range markers {
+			if first == m {
+				matched = true
+				break
+			}
+		}
+		if matched {
 			p.Files = append(p.Files, path)
 		} else if exists(path) {
 			p.Warnings = append(p.Warnings, "配置不受本工具管理，保留："+path)
 		}
 	}
-	if data, err := os.ReadFile(installed); err == nil && strings.Contains(string(data), identity.VersionOutputName) {
-		p.Files = append(p.Files, installed)
+	for _, binPath := range []string{installed, legacyInstalled} {
+		if data, err := os.ReadFile(binPath); err == nil && (strings.Contains(string(data), identity.VersionOutputName) || strings.Contains(string(data), "ai-instructions")) {
+			p.Files = append(p.Files, binPath)
+		}
 	}
 	rc := core.RCPath(c.HomeDir, shell)
-	if data, err := os.ReadFile(rc); err == nil && strings.Contains(string(data), config.BlockBegin) {
-		if strings.Contains(string(data), config.BlockEnd) {
-			p.RCBlocks = append(p.RCBlocks, rc)
-		} else {
-			p.Warnings = append(p.Warnings, "Shell 配置受管块不完整，将保留："+rc)
+	if data, err := os.ReadFile(rc); err == nil {
+		text := string(data)
+		hasNew := strings.Contains(text, config.BlockBegin)
+		hasLegacy := strings.Contains(text, config.LegacyBlockBegin)
+		if hasNew || hasLegacy {
+			newValid := !hasNew || strings.Contains(text, config.BlockEnd)
+			legacyValid := !hasLegacy || strings.Contains(text, config.LegacyBlockEnd)
+			if newValid && legacyValid {
+				p.RCBlocks = append(p.RCBlocks, rc)
+			} else {
+				p.Warnings = append(p.Warnings, "Shell 配置受管块不完整，将保留："+rc)
+			}
 		}
 	}
 	if core.InspectRuntime(c.RuntimeDir).Valid {
