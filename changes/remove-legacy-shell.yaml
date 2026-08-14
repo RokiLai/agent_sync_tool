@@ -1,0 +1,33 @@
+task: remove-legacy-shell
+summary: 移除旧 Shell CLI 与双实现兼容链路，使项目仅依赖 Go 实现
+allowed_paths:
+  - changes/remove-legacy-shell.yaml
+  - Makefile
+  - .github/workflows/dual-implementation.yml
+  - .github/workflows/quality.yml
+  - .github/workflows/shell-contracts.yml
+  - scripts/compare-implementation-trees.sh
+  - scripts/run-implementation-contracts.sh
+  - scripts/verify-shell-contracts.sh
+  - test/contract/git_blob_vectors.txt
+  - test/contract/golden/version.txt
+  - test/contract/scenarios.yaml
+  - test/integration/compatibility_test.go
+  - test/integration/fixtures/tree-ignore.txt
+  - test/integration/quality_gate_test.go
+  - test/integration/readonly_test.go
+constraints:
+  - 保留 install.sh 作为 Release 二进制安装引导
+  - 保留 shell-init、Shell 受管加载块和终端自动同步能力
+  - 保留 aic 与 ai-instructions 两个命令入口
+  - 保留现有配置 marker、runtime 布局和数据兼容格式
+  - 不修改源项目 /Users/rokilai/src/ai-instructions
+  - 不引入第三方依赖
+verification:
+  - 变更范围检查
+  - 架构依赖检查
+  - Go 单元测试与 race detector
+  - Go 集成测试
+  - 跨平台构建
+  - Release 脚本验证
+  - Diff Coverage 检查

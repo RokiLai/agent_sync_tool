@@ -55,22 +55,6 @@ func TestBinaryHelpMatchesGoldenAndShell(t *testing.T) {
 	if string(got) != string(want) {
 		t.Fatalf("Go help differs from golden")
 	}
-	sourceProject := os.Getenv("AI_INSTRUCTIONS_SOURCE_PROJECT")
-	if sourceProject == "" {
-		sourceProject = filepath.Join(root, "../ai-instructions")
-	}
-	if _, err := os.Stat(filepath.Join(sourceProject, "bin/ai-instructions")); err != nil {
-		t.Skip("Shell source project unavailable")
-	}
-	shell := exec.Command("sh", filepath.Join(sourceProject, "bin/ai-instructions"), "help")
-	shell.Env = append(os.Environ(), "HOME="+home)
-	shellOut, err := shell.Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(got) != string(shellOut) {
-		t.Fatal("Go and Shell help differ")
-	}
 }
 
 func TestBinaryVersionAliases(t *testing.T) {

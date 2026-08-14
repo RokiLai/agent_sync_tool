@@ -1,16 +1,13 @@
-.PHONY: test verify compatibility cross-build release
+.PHONY: test verify cross-build release
 
 test:
-	go test -race ./...
+	go test -race -timeout 2m ./...
 
 verify:
-	gofmt -w cmd internal test
+	test -z "$$(gofmt -l cmd internal test)"
 	go vet ./...
-	go test -race ./...
-	sh scripts/verify-shell-contracts.sh
-
-compatibility:
-	sh scripts/run-implementation-contracts.sh all
+	go test -race -timeout 2m ./...
+	$(MAKE) cross-build
 
 cross-build:
 	GOOS=darwin GOARCH=amd64 go build -o /tmp/aic-darwin-amd64 ./cmd/aic

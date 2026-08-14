@@ -8,19 +8,21 @@ import (
 	"testing"
 )
 
-func TestImplementationContractsKeepRaceAndTimeout(t *testing.T) {
+func TestQualityGateKeepsRaceTimeoutVetAndCrossBuild(t *testing.T) {
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("runtime.Caller failed")
 	}
-	path := filepath.Join(filepath.Dir(file), "..", "..", "scripts", "run-implementation-contracts.sh")
+	path := filepath.Join(filepath.Dir(file), "..", "..", "Makefile")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	command := "go test -race -timeout 2m ./..."
-	if count := strings.Count(string(data), command); count != 2 {
-		t.Fatalf("quality gate command count=%d want 2", count)
+	text := string(data)
+	for _, command := range []string{"go vet ./...", "go test -race -timeout 2m ./...", "$(MAKE) cross-build"} {
+		if !strings.Contains(text, command) {
+			t.Fatalf("quality gate is missing %q", command)
+		}
 	}
 }
 
