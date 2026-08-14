@@ -1,5 +1,7 @@
 # Agent Sync Tool
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 Agent Sync Tool 是一个用于集中管理 AI 编程助手规则的命令行工具。它从一个 HTTP(S) 地址获取 `AGENTS.md`，以只读、可回滚的版本保存到本机，并为 Codex、Claude 和 Antigravity 创建统一入口。
 
 主命令为 `agentsync`。v3.2.1 起新安装只创建该命令入口，重复安装会清理本工具管理的 `aic` 和 `ai-instructions` 旧链接。
