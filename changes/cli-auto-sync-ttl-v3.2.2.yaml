@@ -1,0 +1,23 @@
+task: cli-auto-sync-ttl-v3.2.2
+summary: v3.2.2 支持 agentsync sync --auto 与 TTL 缓存校验，降低 CLI 启动网络延迟
+allowed_paths:
+  - changes/cli-auto-sync-ttl-v3.2.2.yaml
+  - internal/app/**
+  - internal/core/**
+  - internal/runtime/**
+  - internal/integration/**
+  - internal/uninstall/**
+  - test/**
+  - scripts/**
+constraints:
+  - 手动 agentsync sync 保持强制联网拉取最新指令与更新
+  - Shell Wrapper 自动调用 sync --auto 并在 TTL 有效期内跳过网络请求
+  - 在 runtime 目录维护 LAST_CHECKED 时间戳元数据
+  - 卸载清理计划包含 LAST_CHECKED
+  - Release 产物保持四平台与 aic_* 兼容资产
+  - 不引入第三方依赖
+verification:
+  - LAST_CHECKED 读写与 SyncAuto TTL 单元测试
+  - 二进制 sync --auto 与 sync 请求次数端到端集成测试
+  - make verify 质量门禁全量通过（vet, race, cross-build）
+  - make release 发布产物打包与 checksum 校验

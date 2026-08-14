@@ -46,7 +46,7 @@ func Build(c config.Config, shell string) Plan {
 		}
 	}
 	if core.InspectRuntime(c.RuntimeDir).Valid {
-		p.RuntimeFiles = []string{filepath.Join(c.RuntimeDir, "AGENTS.md"), filepath.Join(c.RuntimeDir, "REVISION"), filepath.Join(c.RuntimeDir, "current")}
+		p.RuntimeFiles = []string{filepath.Join(c.RuntimeDir, "AGENTS.md"), filepath.Join(c.RuntimeDir, "REVISION"), filepath.Join(c.RuntimeDir, "current"), filepath.Join(c.RuntimeDir, "LAST_CHECKED")}
 		p.RuntimeDirs = []string{filepath.Join(c.RuntimeDir, "versions")}
 	}
 	return p

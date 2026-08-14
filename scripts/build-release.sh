@@ -1,6 +1,6 @@
 #!/bin/sh
 set -eu
-output=${1:-dist}; version=${AIC_BUILD_VERSION:-3.2.1}
+output=${1:-dist}; version=${AIC_BUILD_VERSION:-3.2.2}
 command_name=agentsync
 primary_artifact_prefix=agentsync
 legacy_artifact_prefix=aic

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
@@ -134,5 +135,60 @@ func TestBinarySIGTERMCleansLock(t *testing.T) {
 			t.Fatalf("lock remains: %v", err)
 		}
 		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func TestBinarySyncAutoTTL(t *testing.T) {
+	binary := buildAIC(t)
+	home := t.TempDir()
+	var requestCount atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount.Add(1)
+		_, _ = w.Write([]byte("rules\n"))
+	}))
+	defer server.Close()
+
+	configDir := filepath.Join(home, "config")
+	runtimeDir := filepath.Join(home, "runtime")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(configDir, "agents-url"), []byte("# ai-instructions AGENTS URL v1\n"+server.URL+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	run := func(args ...string) (string, string, error) {
+		cmdArgs := append([]string{"sync"}, args...)
+		cmd := exec.Command(binary, cmdArgs...)
+		cmd.Env = append(os.Environ(), "HOME="+home, "AI_INSTRUCTIONS_CONFIG_DIR="+configDir, "AI_INSTRUCTIONS_RUNTIME_DIR="+runtimeDir)
+		var stdout, stderr strings.Builder
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		err := cmd.Run()
+		return stdout.String(), stderr.String(), err
+	}
+
+	// 1. 首次 auto sync：本地无缓存，必须触发请求
+	stdout, stderr, err := run("--auto")
+	if err != nil || stdout != "" || stderr != "" || requestCount.Load() != 1 {
+		t.Fatalf("first auto sync: out=%q errout=%q err=%v reqs=%d", stdout, stderr, err, requestCount.Load())
+	}
+
+	// 2. 第二次 auto sync：在 TTL 内，跳过网络请求，静默退出
+	stdout, stderr, err = run("--auto")
+	if err != nil || stdout != "" || stderr != "" || requestCount.Load() != 1 {
+		t.Fatalf("second auto sync within TTL: out=%q errout=%q err=%v reqs=%d", stdout, stderr, err, requestCount.Load())
+	}
+
+	// 3. 手动 sync：无视 TTL 强制联网请求，并输出同步提示
+	stdout, stderr, err = run()
+	if err != nil || stdout != "" || !strings.Contains(stderr, "AI 指令已同步") || requestCount.Load() != 2 {
+		t.Fatalf("manual sync: out=%q errout=%q err=%v reqs=%d", stdout, stderr, err, requestCount.Load())
+	}
+
+	// 4. 不支持的参数
+	_, stderr, err = run("--invalid-flag")
+	if err == nil || !strings.Contains(stderr, "不支持的参数") {
+		t.Fatalf("invalid flag should fail, errout=%q err=%v", stderr, err)
 	}
 }

@@ -18,17 +18,17 @@ esac
 export PATH
 
 codex() {
-    "%s" sync || return
+    "%s" sync --auto || return
     command codex "$@"
 }
 
 claude() {
-    "%s" sync || return
+    "%s" sync --auto || return
     command claude "$@"
 }
 
 agy() {
-    "%s" sync || return
+    "%s" sync --auto || return
     command agy "$@"
 }
 

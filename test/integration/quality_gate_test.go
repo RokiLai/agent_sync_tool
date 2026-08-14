@@ -37,7 +37,7 @@ func TestReleaseBuildNormalizesTagVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(data)
-	for _, expected := range []string{"AIC_BUILD_VERSION:-3.2.1", "command_name=agentsync", "primary_artifact_prefix=agentsync", "legacy_artifact_prefix=aic", "[vV]*) version=${version#?}"} {
+	for _, expected := range []string{"AIC_BUILD_VERSION:-3.2.2", "command_name=agentsync", "primary_artifact_prefix=agentsync", "legacy_artifact_prefix=aic", "[vV]*) version=${version#?}"} {
 		if !strings.Contains(text, expected) {
 			t.Fatalf("release build is missing %q", expected)
 		}

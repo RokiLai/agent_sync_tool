@@ -9,7 +9,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/RokiLai/agent_sync_tool/internal/config"
 	"github.com/RokiLai/agent_sync_tool/internal/diagnose"
@@ -25,7 +27,7 @@ import (
 	"github.com/RokiLai/agent_sync_tool/internal/upgrade"
 )
 
-var Version = "3.2.1"
+var Version = "3.2.2"
 
 type Dependencies struct {
 	Stdin            io.Reader
@@ -125,14 +127,33 @@ func Main(ctx context.Context, args []string, deps Dependencies) int {
 			fmt.Fprintf(deps.Stdout, "[OK] 安装完成；请新开终端或执行：. %s\n", plan.ShellRC)
 		}
 	case "sync":
-		if len(args) != 0 {
-			return fail(deps.Stderr, "sync 不接受参数")
+		auto := false
+		for _, arg := range args {
+			if arg == "--auto" {
+				auto = true
+			} else {
+				return fail(deps.Stderr, fmt.Sprintf("sync 不支持的参数：%s", arg))
+			}
 		}
 		raw, err := diagnose.ReadAgentsURL(c)
 		if err != nil {
 			return fail(deps.Stderr, fmt.Sprintf("未配置有效的 AGENTS.md 来源；请运行 %s source set <URL>", identity.PrimaryCommand))
 		}
 		syncer := newSyncer(c, deps)
+		if auto {
+			ttl := parseTTL(deps.LookupEnv)
+			_, skipped, err := syncer.SyncAuto(ctx, raw, ttl)
+			if skipped {
+				return 0
+			}
+			if errors.Is(err, runtime.ErrUsingCache) {
+				return 0
+			}
+			if err != nil {
+				return fail(deps.Stderr, err.Error())
+			}
+			return 0
+		}
 		state, err := syncer.Sync(ctx, raw, false)
 		if errors.Is(err, runtime.ErrUsingCache) {
 			fmt.Fprintf(deps.Stderr, "警告：AGENTS.md 下载或校验失败；使用最后一次成功部署的有效缓存：%s\n", state.Revision)
@@ -374,6 +395,24 @@ func yes(value string) bool { value = strings.TrimSpace(value); return value == 
 func upgradeYes(value string) bool {
 	value = strings.TrimSpace(value)
 	return value == "" || value == "y" || value == "Y"
+}
+
+func parseTTL(lookup config.LookupEnv) time.Duration {
+	defaultTTL := time.Hour
+	val, ok := lookup("AI_INSTRUCTIONS_AUTO_SYNC_TTL")
+	if !ok || val == "" {
+		val, ok = lookup("AGENTSYNC_AUTO_TTL")
+	}
+	if !ok || val == "" {
+		return defaultTTL
+	}
+	if d, err := time.ParseDuration(val); err == nil {
+		return d
+	}
+	if sec, err := strconv.Atoi(val); err == nil {
+		return time.Duration(sec) * time.Second
+	}
+	return defaultTTL
 }
 
 var Usage = fmt.Sprintf(`用法：%s <命令> [选项]

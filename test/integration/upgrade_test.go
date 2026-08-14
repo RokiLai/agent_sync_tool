@@ -58,7 +58,7 @@ func TestBinaryGoToGoUpgradeAndRollback(t *testing.T) {
 	cmd := exec.Command(binary, "upgrade")
 	cmd.Env = env
 	out, err := cmd.CombinedOutput()
-	if err != nil || !strings.Contains(string(out), "升级成功：v3.2.1 → v3.3.0") || strings.Contains(string(out), "\x1b[") {
+	if err != nil || !strings.Contains(string(out), "升级成功：v3.2.2 → v3.3.0") || strings.Contains(string(out), "\x1b[") {
 		t.Fatalf("out=%s err=%v", out, err)
 	}
 	before, _ := os.ReadFile(installed)
